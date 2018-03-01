@@ -57,7 +57,7 @@ import java.util.Set;
 /** Stores all the access rules from the Secure Element */
 public class AccessRuleCache {
     private final boolean mDBG = Build.IS_DEBUGGABLE;
-    private final String mTag = "SE AccessRuleCache";
+    private final String mTag = "SecureElement-AccessRuleCache";
     // Previous "RefreshTag"
     // 2012-09-25
     // the refresh tag has to be valid as long as AxxController is valid

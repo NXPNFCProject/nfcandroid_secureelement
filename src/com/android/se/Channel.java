@@ -37,7 +37,7 @@ import com.android.se.security.ChannelAccess;
  */
 public class Channel implements IBinder.DeathRecipient {
 
-    private final String mTag = "SecureElementChannel";
+    private final String mTag = "SecureElement-Channel";
     private final int mChannelNumber;
     private final Object mLock = new Object();
     private IBinder mBinder = null;
@@ -119,9 +119,9 @@ public class Channel implements IBinder.DeathRecipient {
         if (mChannelAccess.getCallingPid() != mCallingPid) {
             throw new SecurityException("Wrong Caller PID.");
         }
-        if (command.length < 4) {
-            throw new IllegalArgumentException("Command too short");
-        }
+
+        // Validate the APDU command format and throw IllegalArgumentException, if necessary.
+        CommandApduValidator.execute(command);
 
         if (((command[0] & (byte) 0x80) == 0)
                 && ((command[0] & (byte) 0x60) != (byte) 0x20)) {
@@ -132,11 +132,6 @@ public class Channel implements IBinder.DeathRecipient {
             if ((command[1] == (byte) 0xA4) && (command[2] == (byte) 0x04)) {
                 throw new SecurityException("SELECT by DF name command not allowed");
             }
-        } else if (command[0] == (byte) 0xFF) {
-            throw new IllegalArgumentException("CLA(0xFF) not allowed");
-        } else if ((command[1] == (byte) 0x9F) || (command[1] == (byte) 0x6F)) {
-            throw new IllegalArgumentException("the command INS is invalid "
-                    + "(INS = 0x6F or INS = 0x9F)");
         }
 
         checkCommand(command);
@@ -274,7 +269,7 @@ public class Channel implements IBinder.DeathRecipient {
      * implementation.
      */
     public byte[] getSelectResponse() {
-        return mSelectResponse;
+        return (mHasSelectedAid ? mSelectResponse : null);
     }
 
     public boolean isBasicChannel() {

@@ -47,12 +47,12 @@ import com.android.se.security.arf.DERParser;
 import com.android.se.security.arf.SecureElement;
 import com.android.se.security.arf.SecureElementException;
 
-/** EF_ODF related features ************************************************* */
+/** EF_ODF related features */
 public class EFODF extends EF {
 
     // Standardized ID for EF_ODF file
     public static final byte[] EFODF_PATH = {0x50, 0x31};
-    public final String mTag = "SecureElementService ACE ARF";
+    public final String mTag = "SecureElement-ARF-EFODF";
     byte[] mCDFPath = null;
 
     /**

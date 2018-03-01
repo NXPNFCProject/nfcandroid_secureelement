@@ -43,7 +43,7 @@ import java.util.Arrays;
 
 /** Base class for parsing PKCS#15 files */
 public class DERParser {
-    public final String mTag = "SE-ARF-DERParser";
+    public final String mTag = "SecureElement-DERParser";
     // DER parameters
     private byte[] mDERBuffer;
     private short mDERSize, mDERIndex, mTLVDataSize = 0;

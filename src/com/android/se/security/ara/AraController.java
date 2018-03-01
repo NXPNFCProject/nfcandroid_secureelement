@@ -66,7 +66,7 @@ public class AraController {
                     (byte) 0x4C,
                     (byte) 0x00
             };
-    private final String mTag = "SE-AraController";
+    private final String mTag = "SecureElement-AraController";
     private AccessRuleCache mAccessRuleCache = null;
     private Terminal mTerminal = null;
     private AccessRuleApplet mApplet = null;

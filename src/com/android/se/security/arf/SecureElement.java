@@ -55,7 +55,7 @@ import java.util.MissingResourceException;
  * Provides high-level functions for SE communication
  */
 public class SecureElement {
-    public final String mTag = "SecureElementService ACE ARF";
+    public final String mTag = "SecureElement-ARF";
     // Logical channel used for SE communication (optional)
     private Channel mArfChannel = null;
     // Handle to a built-in "Secure Element"

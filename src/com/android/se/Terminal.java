@@ -30,9 +30,11 @@ import android.hardware.secure_element.V1_0.ISecureElementHalCallback;
 import android.hardware.secure_element.V1_0.LogicalChannelResponse;
 import android.hardware.secure_element.V1_0.SecureElementStatus;
 import android.os.RemoteException;
+import android.os.ServiceSpecificException;
 import android.se.omapi.ISecureElementListener;
 import android.se.omapi.ISecureElementReader;
 import android.se.omapi.ISecureElementSession;
+import android.se.omapi.SEService;
 import android.util.Log;
 
 import com.android.se.SecureElementService.SecureElementSession;
@@ -80,6 +82,9 @@ public class Terminal {
                     }
                 } else {
                     initializeAccessControl();
+                    synchronized (mLock) {
+                        mDefaultApplicationSelectedOnBasicChannel = true;
+                    }
                 }
             }
         }
@@ -91,7 +96,7 @@ public class Terminal {
         }
         mContext = context;
         mName = name;
-        mTag = "SecureElementTerminal-" + getName();
+        mTag = "SecureElement-Terminal-" + getName();
         mSEHal = seHal;
         try {
             seHal.init(mHalCallback);
@@ -101,7 +106,10 @@ public class Terminal {
 
     private ArrayList<Byte> byteArrayToArrayList(byte[] array) {
         ArrayList<Byte> list = new ArrayList<Byte>();
-        int i = 0;
+        if (array == null) {
+            return list;
+        }
+
         for (Byte b : array) {
             list.add(b);
         }
@@ -136,7 +144,10 @@ public class Terminal {
             }
         }
         synchronized (mLock) {
-            mChannels.remove(channel);
+            mChannels.remove(channel.getChannelNumber(), channel);
+            if (mChannels.get(channel.getChannelNumber()) != null) {
+                Log.e(mTag, "Removing channel failed");
+            }
         }
     }
 
@@ -194,13 +205,11 @@ public class Terminal {
             }
         } catch (RemoteException ignore) {
         }
-        synchronized (mLock) {
-            mDefaultApplicationSelectedOnBasicChannel = true;
-        }
     }
 
     private void select(byte[] aid) throws RemoteException {
-        byte[] selectCommand = new byte[aid.length + 6];
+        int commandSize = (aid == null ? 0 : aid.length) + 5;
+        byte[] selectCommand = new byte[commandSize];
         selectCommand[0] = 0x00;
         selectCommand[1] = (byte) 0xA4;
         selectCommand[2] = 0x04;
@@ -216,8 +225,8 @@ public class Terminal {
             selectResponse = null;
             throw new NoSuchElementException("Response length is too small");
         }
-        int sw1 = selectResponse[selectResponse.length - 2];
-        int sw2 = selectResponse[selectResponse.length - 1];
+        int sw1 = selectResponse[selectResponse.length - 2] & 0xFF;
+        int sw2 = selectResponse[selectResponse.length - 1] & 0xFF;
         if (sw1 != 0x90 || sw2 != 0x00) {
             selectResponse = null;
             throw new NoSuchElementException("Status word is incorrect");
@@ -232,7 +241,7 @@ public class Terminal {
             int pid) throws RemoteException {
         if (aid != null && aid.length == 0) {
             aid = null;
-        } else if (aid != null && aid.length < 5 || aid.length > 16) {
+        } else if (aid != null && (aid.length < 5 || aid.length > 16)) {
             throw new IllegalArgumentException("AID out of range");
         }
 
@@ -266,8 +275,12 @@ public class Terminal {
             } else if (status[0] == SecureElementStatus.UNSUPPORTED_OPERATION) {
                 throw new UnsupportedOperationException("OpenBasicChannel() failed");
             } else if (status[0] == SecureElementStatus.IOERROR) {
-                throw new RemoteException("OpenBasicChannel() failed");
+                throw new ServiceSpecificException(SEService.IO_ERROR, "OpenBasicChannel() failed");
+            } else if (status[0] == SecureElementStatus.NO_SUCH_ELEMENT_ERROR) {
+                throw new ServiceSpecificException(SEService.NO_SUCH_ELEMENT_ERROR,
+                        "OpenBasicChannel() failed");
             }
+
             Channel basicChannel = new Channel(session, this, 0, selectResponse,
                     listener);
             basicChannel.setChannelAccess(channelAccess);
@@ -303,10 +316,11 @@ public class Terminal {
             int pid) throws RemoteException {
         if (aid != null && aid.length == 0) {
             aid = null;
-        } else if (aid != null && aid.length < 5 || aid.length > 16) {
+        } else if (aid != null && (aid.length < 5 || aid.length > 16)) {
             throw new IllegalArgumentException("AID out of range");
         } else if (!mIsConnected) {
-            throw new RemoteException("Secure Element is not connected");
+            throw new ServiceSpecificException(SEService.IO_ERROR,
+                    "Secure Element is not connected");
         }
 
         ChannelAccess channelAccess = null;
@@ -332,12 +346,15 @@ public class Terminal {
             } else if (status[0] == SecureElementStatus.UNSUPPORTED_OPERATION) {
                 throw new UnsupportedOperationException("OpenLogicalChannel() failed");
             } else if (status[0] == SecureElementStatus.IOERROR) {
-                throw new RemoteException("OpenLogicalChannel() failed");
+                throw new ServiceSpecificException(SEService.IO_ERROR,
+                        "OpenLogicalChannel() failed");
+            } else if (status[0] == SecureElementStatus.NO_SUCH_ELEMENT_ERROR) {
+                throw new ServiceSpecificException(SEService.NO_SUCH_ELEMENT_ERROR,
+                        "OpenLogicalChannel() failed");
             }
-            if (responseArray[0].channelNumber == 0) {
+            if (responseArray[0].channelNumber <= 0 || status[0] != SecureElementStatus.SUCCESS) {
                 return null;
             }
-
             int channelNumber = responseArray[0].channelNumber;
             byte[] selectResponse = arrayListToByteArray(responseArray[0].selectResponse);
             Channel logicalChannel = new Channel(session, this, channelNumber,
@@ -401,7 +418,8 @@ public class Terminal {
     public byte[] transmit(byte[] cmd) throws RemoteException {
         if (!mIsConnected) {
             Log.e(mTag, "Secure Element is not connected");
-            throw new RemoteException("Secure Element is not connected");
+            throw new ServiceSpecificException(SEService.IO_ERROR,
+                    "Secure Element is not connected");
         }
 
         byte[] rsp = transmitInternal(cmd);
@@ -431,7 +449,7 @@ public class Terminal {
     private byte[] transmitInternal(byte[] cmd) throws RemoteException {
         ArrayList<Byte> response = mSEHal.transmit(byteArrayToArrayList(cmd));
         if (response.isEmpty()) {
-            throw new RemoteException("Error in transmit()");
+            throw new ServiceSpecificException(SEService.IO_ERROR, "Error in transmit()");
         }
         byte[] rsp = arrayListToByteArray(response);
         if (mDebug) {
@@ -520,7 +538,7 @@ public class Terminal {
 
     private byte[] getSelectedAid(byte[] selectResponse) {
         byte[] selectedAid = null;
-        if ((selectResponse != null)
+        if ((selectResponse != null && selectResponse.length >= 2)
                 && (selectResponse.length == (selectResponse[1] + 4))
                 && // header(2) + SW(2)
                 ((selectResponse[0] == (byte) 0x62)
@@ -608,12 +626,18 @@ public class Terminal {
                 throw new NullPointerException("session is null");
             }
             mSessions.remove(session);
+            synchronized (mLock) {
+                if (mSessions.size() == 0) {
+                    mDefaultApplicationSelectedOnBasicChannel = true;
+                }
+            }
         }
 
         @Override
         public ISecureElementSession openSession() throws RemoteException {
             if (!isSecureElementPresent()) {
-                throw new RemoteException("Secure Element is not present.");
+                throw new ServiceSpecificException(SEService.IO_ERROR,
+                        "Secure Element is not present.");
             }
 
             synchronized (mLock) {

@@ -59,7 +59,7 @@ public class AccessRuleApplet {
             MAX_LEN);
     private static final CommandApdu GET_REFRESH_TAG = new CommandApdu(0x80, 0xCA, 0xDF, 0x20,
             MAX_LEN);
-    private final String mTag = "AccessRuleApplet";
+    private final String mTag = "SecureElement-AccessRuleApplet";
     private Channel mChannel = null;
 
     public AccessRuleApplet(Channel channel) {

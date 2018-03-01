@@ -65,7 +65,7 @@ import java.util.ArrayList;
 /** Reads and Maintains the ARF and ARA access control for a particular Secure Element */
 public class AccessControlEnforcer {
 
-    private final String mTag = "SE AccessControlEnforcer";
+    private final String mTag = "SecureElement-AccessControlEnforcer";
     private PackageManager mPackageManager = null;
     private AraController mAraController = null;
     private boolean mUseAra = true;
@@ -167,14 +167,14 @@ public class AccessControlEnforcer {
                 // ARA cannot be used since we got an exception during initialization
                 mUseAra = false;
                 denyMsg = e.getLocalizedMessage();
-          /* If the SE is a UICC then a possible explanation could simply
-           * be due to the fact that the UICC is old and doesn't
-           * support logical channel (and is not compliant with GP spec).
-           * in this case we should simply act as if no ARA was available.
-           *
-           * Or if eSE doesn't have ARA applet then full access
-           * should be permitted.
-           */
+                /* If the SE is a UICC then a possible explanation could simply
+                 * be due to the fact that the UICC is old and doesn't
+                 * support logical channel (and is not compliant with GP spec).
+                 * in this case we should simply act as if no ARA was available.
+                 *
+                 * Or if eSE doesn't have ARA applet then full access
+                 * should be permitted.
+                 */
                 if (mTerminal.getName().startsWith(SecureElementService.UICC_TERMINAL)
                         || e instanceof UnsupportedOperationException) {
                     Log.i(mTag, "No ARA applet found in: " + mTerminal.getName());
@@ -184,7 +184,7 @@ public class AccessControlEnforcer {
                     mUseArf = false;
                     mFullAccess = false;
                     status = false;
-                    Log.i(mTag, "Problem accessing ARA, Access DENIED"
+                    Log.i(mTag, "Problem accessing ARA, Access DENIED "
                             + e.getLocalizedMessage());
                 }
             }
@@ -216,7 +216,7 @@ public class AccessControlEnforcer {
             }
         }
 
-      /* 4 - Let's block everything since neither ARA, ARF or fullaccess can be used */
+        /* 4 - Let's block everything since neither ARA, ARF or fullaccess can be used */
         if (!mUseArf && !mUseAra && !mFullAccess) {
             mInitialChannelAccess.setApduAccess(ChannelAccess.ACCESS.DENIED);
             mInitialChannelAccess.setNFCEventAccess(ChannelAccess.ACCESS.DENIED);
@@ -294,10 +294,6 @@ public class AccessControlEnforcer {
             String packageName, boolean checkRefreshTag) {
         if (packageName == null || packageName.isEmpty()) {
             throw new AccessControlException("package names must be specified");
-        } else if (aid == null || aid.length == 0) {
-            throw new AccessControlException("AID must be specified");
-        } else if (aid.length < 5 || aid.length > 16) {
-            throw new AccessControlException("AID has an invalid length");
         }
         try {
             // estimate SHA-1 hash value of the device application's certificate.

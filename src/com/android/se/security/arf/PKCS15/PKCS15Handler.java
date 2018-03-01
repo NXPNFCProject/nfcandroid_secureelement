@@ -62,7 +62,7 @@ public class PKCS15Handler {
     };
     // AIDs of "Access Control Rules" containers
     public static final byte[][] CONTAINER_AIDS = {PKCS15_AID, GPAC_ARF_AID, null};
-    public final String mTag = "SE-ARF-PKCS15Handler";
+    public final String mTag = "SecureElement-PKCS15Handler";
     // Handle to "Secure Element"
     private SecureElement mSEHandle;
     // "Secure Element" label

@@ -38,7 +38,7 @@ package com.android.se.security;
 /** Class for Storing the APDU and NFC Access for a particular Channel */
 public class ChannelAccess {
 
-    private final String mTag = "ChannelAccess";
+    private final String mTag = "SecureElement-ChannelAccess";
     private String mPackageName = "";
     private ACCESS mAccess = ACCESS.UNDEFINED;
     private ACCESS mApduAccess = ACCESS.UNDEFINED;
