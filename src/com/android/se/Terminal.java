@@ -133,7 +133,7 @@ public class Terminal {
         if (channel == null) {
             return;
         }
-        if (mIsConnected && !channel.isBasicChannel()) {
+        if (mIsConnected /*&& !channel.isBasicChannel()*/) {
             try {
                 byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
                 if (status != SecureElementStatus.SUCCESS) {
