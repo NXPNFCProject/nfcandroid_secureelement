@@ -75,6 +75,7 @@ public final class SecureElementService extends Service {
     public static final String UICC_TERMINAL = "SIM";
     public static final String ESE_TERMINAL = "eSE";
     public static final String VIRTUAL_ISO_TERMINAL = "VirtualISO";
+    public static final String NFC_SMB_TERMINAL = "nfc";
     private final String mTag = "SecureElement";
     // LinkedHashMap will maintain the order of insertion
     private LinkedHashMap<String, Terminal> mTerminals = new LinkedHashMap<String, Terminal>();
@@ -189,6 +190,13 @@ public final class SecureElementService extends Service {
 
     private void createTerminals() {
         // Check for all eSE HAL implementations
+        // Delay added before NFC terminal init
+        try {
+            Thread.sleep(5000);
+        }
+        catch(InterruptedException e) {
+        }
+        addTerminals(NFC_SMB_TERMINAL);
         addTerminals(ESE_TERMINAL);
         addTerminals(VIRTUAL_ISO_TERMINAL);
         addTerminals(UICC_TERMINAL);
