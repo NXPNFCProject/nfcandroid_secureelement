@@ -35,8 +35,6 @@
 
 package com.android.se.security.ara;
 
-import android.os.RemoteException;
-
 import com.android.se.Channel;
 import com.android.se.security.CommandApdu;
 import com.android.se.security.ResponseApdu;
@@ -67,7 +65,7 @@ public class AccessRuleApplet {
     }
 
     /** Reads all the access rules from the secure element */
-    public byte[] readAllAccessRules() throws AccessControlException {
+    public byte[] readAllAccessRules() throws AccessControlException, IOException {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         int overallLen = 0;
 
@@ -132,7 +130,7 @@ public class AccessRuleApplet {
     }
 
     /** Fetches the Refresh Tag from the Secure Element */
-    public byte[] readRefreshTag() throws AccessControlException {
+    public byte[] readRefreshTag() throws AccessControlException, IOException {
         CommandApdu apdu = (CommandApdu) GET_REFRESH_TAG.clone();
         ResponseApdu response = send(apdu);
         // OK
@@ -156,12 +154,8 @@ public class AccessRuleApplet {
         throw new AccessControlException("GET REFRESH TAG not successfull.");
     }
 
-    private ResponseApdu send(CommandApdu cmdApdu) {
-        try {
-            byte[] response = mChannel.transmit(cmdApdu.toBytes());
-            return new ResponseApdu(response);
-        } catch (RemoteException e) {
-            return null;
-        }
+    private ResponseApdu send(CommandApdu cmdApdu) throws IOException {
+        byte[] response = mChannel.transmit(cmdApdu.toBytes());
+        return new ResponseApdu(response);
     }
 }

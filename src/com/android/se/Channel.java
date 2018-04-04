@@ -25,12 +25,16 @@ package com.android.se;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.os.ServiceSpecificException;
 import android.se.omapi.ISecureElementChannel;
 import android.se.omapi.ISecureElementListener;
+import android.se.omapi.SEService;
 import android.util.Log;
 
 import com.android.se.SecureElementService.SecureElementSession;
 import com.android.se.security.ChannelAccess;
+
+import java.io.IOException;
 
 /**
  * Represents a Channel opened with the Secure Element
@@ -47,11 +51,10 @@ public class Channel implements IBinder.DeathRecipient {
     private byte[] mSelectResponse;
     private ChannelAccess mChannelAccess = null;
     private int mCallingPid = 0;
-    private boolean mHasSelectedAid = false;
     private byte[] mAid = null;
 
     Channel(SecureElementSession session, Terminal terminal, int channelNumber,
-            byte[] selectResponse, ISecureElementListener listener) {
+            byte[] selectResponse, byte[] aid, ISecureElementListener listener) {
         if (terminal == null) {
             throw new IllegalArgumentException("Arguments can't be null");
         }
@@ -60,6 +63,7 @@ public class Channel implements IBinder.DeathRecipient {
         mIsClosed = false;
         mSelectResponse = selectResponse;
         mChannelNumber = channelNumber;
+        mAid = aid;
         if (listener != null) {
             try {
                 mBinder = listener.asBinder();
@@ -87,7 +91,7 @@ public class Channel implements IBinder.DeathRecipient {
      */
     public synchronized void close() {
         synchronized (mLock) {
-            if (isBasicChannel() && hasSelectedAid()) {
+            if (isBasicChannel()) {
                 Log.i(mTag, "Close basic channel - Select without AID ...");
                 mTerminal.selectDefaultApplication();
             }
@@ -106,7 +110,7 @@ public class Channel implements IBinder.DeathRecipient {
     /**
      * Transmits the given byte and returns the response.
      */
-    public byte[] transmit(byte[] command) throws RemoteException {
+    public byte[] transmit(byte[] command) throws IOException {
         if (isClosed()) {
             throw new IllegalStateException("Channel is closed");
         }
@@ -142,7 +146,7 @@ public class Channel implements IBinder.DeathRecipient {
         }
     }
 
-    private boolean selectNext() throws RemoteException {
+    private boolean selectNext() throws IOException {
         if (isClosed()) {
             throw new IllegalStateException("Channel is closed");
         } else if (mChannelAccess == null) {
@@ -244,13 +248,7 @@ public class Channel implements IBinder.DeathRecipient {
      * @return boolean.
      */
     public boolean hasSelectedAid() {
-        return mHasSelectedAid;
-    }
-
-    /** set selected aid flag and aid (may be null). */
-    public void hasSelectedAid(boolean has, byte[] aid) {
-        mHasSelectedAid = has;
-        mAid = aid;
+        return (mAid != null);
     }
 
     public int getChannelNumber() {
@@ -269,7 +267,7 @@ public class Channel implements IBinder.DeathRecipient {
      * implementation.
      */
     public byte[] getSelectResponse() {
-        return (mHasSelectedAid ? mSelectResponse : null);
+        return (hasSelectedAid() ? mSelectResponse : null);
     }
 
     public boolean isBasicChannel() {
@@ -306,13 +304,21 @@ public class Channel implements IBinder.DeathRecipient {
         @Override
         public byte[] transmit(byte[] command) throws RemoteException {
             Channel.this.setCallingPid(Binder.getCallingPid());
-            return Channel.this.transmit(command);
+            try {
+                return Channel.this.transmit(command);
+            } catch (IOException e) {
+                throw new ServiceSpecificException(SEService.IO_ERROR, e.getMessage());
+            }
         }
 
         @Override
         public boolean selectNext() throws RemoteException {
             Channel.this.setCallingPid(Binder.getCallingPid());
-            return Channel.this.selectNext();
+            try {
+                return Channel.this.selectNext();
+            } catch (IOException e) {
+                throw new ServiceSpecificException(SEService.IO_ERROR, e.getMessage());
+            }
         }
     }
 }

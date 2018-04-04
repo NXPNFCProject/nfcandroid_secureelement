@@ -29,6 +29,7 @@ import android.hardware.secure_element.V1_0.ISecureElement;
 import android.hardware.secure_element.V1_0.ISecureElementHalCallback;
 import android.hardware.secure_element.V1_0.LogicalChannelResponse;
 import android.hardware.secure_element.V1_0.SecureElementStatus;
+import android.os.Build;
 import android.os.RemoteException;
 import android.os.ServiceSpecificException;
 import android.se.omapi.ISecureElementListener;
@@ -42,11 +43,13 @@ import com.android.se.internal.ByteArrayConverter;
 import com.android.se.security.AccessControlEnforcer;
 import com.android.se.security.ChannelAccess;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
 
 /**
@@ -63,7 +66,7 @@ public class Terminal {
     private Context mContext;
     private boolean mDefaultApplicationSelectedOnBasicChannel = true;
 
-    private boolean mDebug = true;
+    private static final boolean DEBUG = Build.IS_DEBUGGABLE;
 
     private ISecureElement mSEHal;
 
@@ -81,7 +84,11 @@ public class Terminal {
                         mAccessControlEnforcer.reset();
                     }
                 } else {
-                    initializeAccessControl();
+                    try {
+                        initializeAccessControl();
+                    } catch (Exception e) {
+                        // ignore
+                    }
                     synchronized (mLock) {
                         mDefaultApplicationSelectedOnBasicChannel = true;
                     }
@@ -133,10 +140,15 @@ public class Terminal {
         if (channel == null) {
             return;
         }
-        if (mIsConnected /*&& !channel.isBasicChannel()*/) {
+        if (mIsConnected) {
             try {
                 byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
-                if (status != SecureElementStatus.SUCCESS) {
+                /* For Basic Channels, errors are expected.
+                 * Underlying implementations use this call as an indication when there
+                 * aren't any users actively using the channel, and the chip can go
+                 * into low power state.
+                 */
+                if (!channel.isBasicChannel() && status != SecureElementStatus.SUCCESS) {
                     Log.e(mTag, "Error closing channel " + channel.getChannelNumber());
                 }
             } catch (RemoteException e) {
@@ -203,11 +215,11 @@ public class Terminal {
                 } catch (Exception ignore) {
                 }
             }
-        } catch (RemoteException ignore) {
+        } catch (Exception ignore) {
         }
     }
 
-    private void select(byte[] aid) throws RemoteException {
+    private void select(byte[] aid) throws IOException {
         int commandSize = (aid == null ? 0 : aid.length) + 5;
         byte[] selectCommand = new byte[commandSize];
         selectCommand[0] = 0x00;
@@ -237,16 +249,23 @@ public class Terminal {
      * Opens a Basic Channel with the given AID and P2 paramters
      */
     public Channel openBasicChannel(SecureElementSession session, byte[] aid, byte p2,
-            ISecureElementListener listener, String packageName,
-            int pid) throws RemoteException {
+            ISecureElementListener listener, String packageName, int pid) throws IOException,
+            NoSuchElementException {
         if (aid != null && aid.length == 0) {
             aid = null;
         } else if (aid != null && (aid.length < 5 || aid.length > 16)) {
             throw new IllegalArgumentException("AID out of range");
+        } else if (!mIsConnected) {
+            throw new IOException("Secure Element is not connected");
         }
 
         Log.w(mTag, "Enable access control on basic channel for " + packageName);
-        ChannelAccess channelAccess = setUpChannelAccess(aid, packageName, true, pid);
+        ChannelAccess channelAccess;
+        try {
+            channelAccess = setUpChannelAccess(aid, packageName, pid);
+        } catch (MissingResourceException e) {
+            return null;
+        }
 
         synchronized (mLock) {
             if (mChannels.get(0) != null) {
@@ -260,37 +279,35 @@ public class Terminal {
 
             ArrayList<byte[]> responseList = new ArrayList<byte[]>();
             byte[] status = new byte[1];
-            mSEHal.openBasicChannel(byteArrayToArrayList(aid), p2,
-                    new ISecureElement.openBasicChannelCallback() {
-                        @Override
-                        public void onValues(ArrayList<Byte> responseObject, byte halStatus) {
-                            status[0] = halStatus;
-                            responseList.add(arrayListToByteArray(responseObject));
-                            return;
-                        }
-                    });
+
+            try {
+                mSEHal.openBasicChannel(byteArrayToArrayList(aid), p2,
+                        new ISecureElement.openBasicChannelCallback() {
+                            @Override
+                            public void onValues(ArrayList<Byte> responseObject, byte halStatus) {
+                                status[0] = halStatus;
+                                responseList.add(arrayListToByteArray(responseObject));
+                                return;
+                            }
+                        });
+            } catch (RemoteException e) {
+                throw new IOException(e.getMessage());
+            }
+
             byte[] selectResponse = responseList.get(0);
             if (status[0] == SecureElementStatus.CHANNEL_NOT_AVAILABLE) {
                 return null;
             } else if (status[0] == SecureElementStatus.UNSUPPORTED_OPERATION) {
                 throw new UnsupportedOperationException("OpenBasicChannel() failed");
             } else if (status[0] == SecureElementStatus.IOERROR) {
-                throw new ServiceSpecificException(SEService.IO_ERROR, "OpenBasicChannel() failed");
+                throw new IOException("OpenBasicChannel() failed");
             } else if (status[0] == SecureElementStatus.NO_SUCH_ELEMENT_ERROR) {
-                throw new ServiceSpecificException(SEService.NO_SUCH_ELEMENT_ERROR,
-                        "OpenBasicChannel() failed");
+                throw new NoSuchElementException("OpenBasicChannel() failed");
             }
 
-            Channel basicChannel = new Channel(session, this, 0, selectResponse,
+            Channel basicChannel = new Channel(session, this, 0, selectResponse, aid,
                     listener);
             basicChannel.setChannelAccess(channelAccess);
-
-            byte[] selectedAid = getSelectedAid(selectResponse);
-            if (selectedAid != null) {
-                basicChannel.hasSelectedAid(true, selectedAid);
-            } else {
-                basicChannel.hasSelectedAid((aid != null) ? true : false, aid);
-            }
 
             if (aid != null) {
                 mDefaultApplicationSelectedOnBasicChannel = false;
@@ -303,54 +320,61 @@ public class Terminal {
     /**
      * Opens a logical Channel without Channel Access initialization.
      */
-    public Channel openLogicalChannelWithoutChannelAccess(byte[] aid) throws RemoteException {
+    public Channel openLogicalChannelWithoutChannelAccess(byte[] aid) throws IOException,
+            NoSuchElementException {
         return openLogicalChannel(null, aid, (byte) 0x00, null, null, 0);
     }
 
     /**
      * Opens a logical Channel with AID.
      */
-    public Channel openLogicalChannel(
-            SecureElementSession session, byte[] aid, byte p2,
-            ISecureElementListener listener, String packageName,
-            int pid) throws RemoteException {
+    public Channel openLogicalChannel(SecureElementSession session, byte[] aid, byte p2,
+            ISecureElementListener listener, String packageName, int pid) throws IOException,
+            NoSuchElementException {
         if (aid != null && aid.length == 0) {
             aid = null;
         } else if (aid != null && (aid.length < 5 || aid.length > 16)) {
             throw new IllegalArgumentException("AID out of range");
         } else if (!mIsConnected) {
-            throw new ServiceSpecificException(SEService.IO_ERROR,
-                    "Secure Element is not connected");
+            throw new IOException("Secure Element is not connected");
         }
 
         ChannelAccess channelAccess = null;
         if (packageName != null) {
             Log.w(mTag, "Enable access control on logical channel for " + packageName);
-            channelAccess = setUpChannelAccess(aid, packageName, true, pid);
+            try {
+                channelAccess = setUpChannelAccess(aid, packageName, pid);
+            } catch (MissingResourceException e) {
+                return null;
+            }
         }
 
         synchronized (mLock) {
             LogicalChannelResponse[] responseArray = new LogicalChannelResponse[1];
             byte[] status = new byte[1];
-            mSEHal.openLogicalChannel(byteArrayToArrayList(aid), p2,
-                    new ISecureElement.openLogicalChannelCallback() {
-                        @Override
-                        public void onValues(LogicalChannelResponse response, byte halStatus) {
-                            status[0] = halStatus;
-                            responseArray[0] = response;
-                            return;
-                        }
-                    });
+
+            try {
+                mSEHal.openLogicalChannel(byteArrayToArrayList(aid), p2,
+                        new ISecureElement.openLogicalChannelCallback() {
+                            @Override
+                            public void onValues(LogicalChannelResponse response, byte halStatus) {
+                                status[0] = halStatus;
+                                responseArray[0] = response;
+                                return;
+                            }
+                        });
+            } catch (RemoteException e) {
+                throw new IOException(e.getMessage());
+            }
+
             if (status[0] == SecureElementStatus.CHANNEL_NOT_AVAILABLE) {
                 return null;
             } else if (status[0] == SecureElementStatus.UNSUPPORTED_OPERATION) {
                 throw new UnsupportedOperationException("OpenLogicalChannel() failed");
             } else if (status[0] == SecureElementStatus.IOERROR) {
-                throw new ServiceSpecificException(SEService.IO_ERROR,
-                        "OpenLogicalChannel() failed");
+                throw new IOException("OpenLogicalChannel() failed");
             } else if (status[0] == SecureElementStatus.NO_SUCH_ELEMENT_ERROR) {
-                throw new ServiceSpecificException(SEService.NO_SUCH_ELEMENT_ERROR,
-                        "OpenLogicalChannel() failed");
+                throw new NoSuchElementException("OpenLogicalChannel() failed");
             }
             if (responseArray[0].channelNumber <= 0 || status[0] != SecureElementStatus.SUCCESS) {
                 return null;
@@ -358,15 +382,8 @@ public class Terminal {
             int channelNumber = responseArray[0].channelNumber;
             byte[] selectResponse = arrayListToByteArray(responseArray[0].selectResponse);
             Channel logicalChannel = new Channel(session, this, channelNumber,
-                    selectResponse, listener);
+                    selectResponse, aid, listener);
             logicalChannel.setChannelAccess(channelAccess);
-
-            byte[] selectedAid = selectedAid = getSelectedAid(selectResponse);
-            if (selectedAid != null) {
-                logicalChannel.hasSelectedAid(true, selectedAid);
-            } else {
-                logicalChannel.hasSelectedAid((aid != null) ? true : false, aid);
-            }
 
             mChannels.put(channelNumber, logicalChannel);
             return logicalChannel;
@@ -415,11 +432,10 @@ public class Terminal {
      * @param cmd the command APDU to be transmitted.
      * @return the response received.
      */
-    public byte[] transmit(byte[] cmd) throws RemoteException {
+    public byte[] transmit(byte[] cmd) throws IOException {
         if (!mIsConnected) {
             Log.e(mTag, "Secure Element is not connected");
-            throw new ServiceSpecificException(SEService.IO_ERROR,
-                    "Secure Element is not connected");
+            throw new IOException("Secure Element is not connected");
         }
 
         byte[] rsp = transmitInternal(cmd);
@@ -446,13 +462,18 @@ public class Terminal {
         return rsp;
     }
 
-    private byte[] transmitInternal(byte[] cmd) throws RemoteException {
-        ArrayList<Byte> response = mSEHal.transmit(byteArrayToArrayList(cmd));
+    private byte[] transmitInternal(byte[] cmd) throws IOException {
+        ArrayList<Byte> response;
+        try {
+            response = mSEHal.transmit(byteArrayToArrayList(cmd));
+        } catch (RemoteException e) {
+            throw new IOException(e.getMessage());
+        }
         if (response.isEmpty()) {
-            throw new ServiceSpecificException(SEService.IO_ERROR, "Error in transmit()");
+            throw new IOException("Error in transmit()");
         }
         byte[] rsp = arrayListToByteArray(response);
-        if (mDebug) {
+        if (DEBUG) {
             Log.i(mTag, "Sent : " + ByteArrayConverter.byteArrayToHexString(cmd));
             Log.i(mTag, "Received : " + ByteArrayConverter.byteArrayToHexString(rsp));
         }
@@ -462,14 +483,19 @@ public class Terminal {
     /**
      * Checks if the application is authorized to receive the transaction event.
      */
-    public boolean[] isNfcEventAllowed(
-            PackageManager packageManager,
-            byte[] aid,
-            String[] packageNames,
-            boolean checkRefreshTag) {
+    public boolean[] isNfcEventAllowed(PackageManager packageManager, byte[] aid,
+            String[] packageNames) {
+        boolean checkRefreshTag = true;
         if (mAccessControlEnforcer == null) {
-            Log.e(mTag, "Access Control Enforcer not properly set up");
-            initializeAccessControl();
+            try {
+                initializeAccessControl();
+                // Just finished to initialize the access control enforcer.
+                // It is too much to check the refresh tag in this case.
+                checkRefreshTag = false;
+            } catch (Exception e) {
+                Log.i(mTag, "isNfcEventAllowed Exception: " + e.getMessage());
+                return null;
+            }
         }
         mAccessControlEnforcer.setPackageManager(packageManager);
 
@@ -499,11 +525,14 @@ public class Terminal {
     /**
      * Initialize the Access Control and set up the channel access.
      */
-    public ChannelAccess setUpChannelAccess(byte[] aid, String packageName,
-            boolean checkRefreshTag, int pid) {
+    private ChannelAccess setUpChannelAccess(byte[] aid, String packageName, int pid)
+            throws IOException, MissingResourceException {
+        boolean checkRefreshTag = true;
         if (mAccessControlEnforcer == null) {
-            Log.e(mTag, "Access Control Enforcer not properly set up");
             initializeAccessControl();
+            // Just finished to initialize the access control enforcer.
+            // It is too much to check the refresh tag in this case.
+            checkRefreshTag = false;
         }
         mAccessControlEnforcer.setPackageManager(mContext.getPackageManager());
 
@@ -514,6 +543,8 @@ public class Terminal {
                                 checkRefreshTag);
                 channelAccess.setCallingPid(pid);
                 return channelAccess;
+            } catch (IOException | MissingResourceException e) {
+                throw e;
             } catch (Exception e) {
                 throw new SecurityException("Exception in setUpChannelAccess()" + e);
             }
@@ -523,42 +554,27 @@ public class Terminal {
     /**
      * Initializes the Access Control for this Terminal
      */
-    private synchronized void initializeAccessControl() {
+    private synchronized void initializeAccessControl() throws IOException,
+            MissingResourceException {
         synchronized (mLock) {
             if (mAccessControlEnforcer == null) {
                 mAccessControlEnforcer = new AccessControlEnforcer(this);
             }
-            mAccessControlEnforcer.initialize(true);
+            try {
+                mAccessControlEnforcer.initialize();
+            } catch (IOException | MissingResourceException e) {
+                // Retrieving access rules failed because of an IO error happened between
+                // the terminal and the secure element or the lack of a logical channel available.
+                // It might be a temporary failure, so the terminal shall attempt to cache
+                // the access rules again later.
+                mAccessControlEnforcer = null;
+                throw e;
+            }
         }
     }
 
     public AccessControlEnforcer getAccessControlEnforcer() {
         return mAccessControlEnforcer;
-    }
-
-    private byte[] getSelectedAid(byte[] selectResponse) {
-        byte[] selectedAid = null;
-        if ((selectResponse != null && selectResponse.length >= 2)
-                && (selectResponse.length == (selectResponse[1] + 4))
-                && // header(2) + SW(2)
-                ((selectResponse[0] == (byte) 0x62)
-                        || (selectResponse[0] == (byte) 0x6F))) { // FCP or FCI template
-            int nextTlv = 2;
-            while (selectResponse.length > nextTlv) {
-                if (selectResponse[nextTlv] == (byte) 0x84) {
-                    if (selectResponse.length >= (nextTlv + selectResponse[nextTlv + 1] + 2)) {
-                        selectedAid = new byte[selectResponse[nextTlv + 1]];
-                        System.arraycopy(
-                                selectResponse, nextTlv + 2, selectedAid, 0,
-                                selectResponse[nextTlv + 1]);
-                    }
-                    break;
-                } else {
-                    nextTlv += 2 + selectResponse[nextTlv + 1];
-                }
-            }
-        }
-        return selectedAid;
     }
 
     /** Dump data for debug purpose . */

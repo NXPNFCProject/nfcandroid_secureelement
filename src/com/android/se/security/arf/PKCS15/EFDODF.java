@@ -43,6 +43,8 @@ import com.android.se.security.arf.DERParser;
 import com.android.se.security.arf.SecureElement;
 import com.android.se.security.arf.SecureElementException;
 
+import java.io.IOException;
+
 /** EF_DODF related features */
 public class EFDODF extends EF {
 
@@ -109,7 +111,8 @@ public class EFDODF extends EF {
      * @param path Path of the "EF_DODF" file
      * @return Path to "EF_ACMain" from "Access Control" OID; <code>null</code> otherwise
      */
-    public byte[] analyseFile(byte[] path) throws PKCS15Exception, SecureElementException {
+    public byte[] analyseFile(byte[] path) throws IOException, PKCS15Exception,
+            SecureElementException {
         Log.i(TAG, "Analysing EF_DODF...");
 
         if (selectFile(path) != APDU_SUCCESS) throw new PKCS15Exception("EF_DODF not found!");

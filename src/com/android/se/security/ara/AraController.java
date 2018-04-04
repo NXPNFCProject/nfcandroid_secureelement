@@ -47,9 +47,12 @@ import com.android.se.security.gpac.REF_AR_DO;
 import com.android.se.security.gpac.Response_ALL_AR_DO;
 import com.android.se.security.gpac.Response_DO_Factory;
 
+import java.io.IOException;
 import java.security.AccessControlException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.MissingResourceException;
+import java.util.NoSuchElementException;
 
 /** Reads and Maintains the ARA access for the Secure Element */
 public class AraController {
@@ -84,10 +87,10 @@ public class AraController {
      * Initialize the AraController, reads the refresh tag.
      * and fetch the access rules
      */
-    public synchronized void initialize() throws Exception {
+    public synchronized void initialize() throws IOException, NoSuchElementException {
         Channel channel = mTerminal.openLogicalChannelWithoutChannelAccess(getAraMAid());
         if (channel == null) {
-            throw new AccessControlException("could not open channel");
+            throw new MissingResourceException("could not open channel", "", "");
         }
 
         // set access conditions to access ARA-M.
@@ -113,6 +116,10 @@ public class AraController {
 
             Log.i(mTag, "Read ARs from ARA");
             readAllAccessRules();
+        } catch (IOException e) {
+            // Some kind of communication problem happened while transmit() was executed.
+            // IOError shall be notified to the client application in this case.
+            throw e;
         } catch (Exception e) {
             Log.i(mTag, "ARA error: " + e.getLocalizedMessage());
             throw new AccessControlException(e.getLocalizedMessage());
@@ -123,7 +130,7 @@ public class AraController {
         }
     }
 
-    private void readAllAccessRules() throws AccessControlException {
+    private void readAllAccessRules() throws AccessControlException, IOException {
         try {
             byte[] data = mApplet.readAllAccessRules();
             // no data returned, but no exception

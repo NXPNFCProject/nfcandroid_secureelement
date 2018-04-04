@@ -50,6 +50,7 @@ import com.android.se.security.arf.SecureElement;
 import com.android.se.security.gpac.AID_REF_DO;
 import com.android.se.security.gpac.Hash_REF_DO;
 
+import java.io.IOException;
 import java.util.Vector;
 
 /** EF_ACConditions related features ************************************************* */
@@ -260,7 +261,7 @@ public class EFACConditions extends EF {
      *
      * @param path Path of the "EF_ACConditions" file
      */
-    public void addRestrictedHashes(byte[] path) throws PKCS15Exception {
+    public void addRestrictedHashes(byte[] path) throws IOException, PKCS15Exception {
         try {
             Log.i(TAG, "Reading and analysing EF_ACConditions...");
             if (selectFile(path) == APDU_SUCCESS) {

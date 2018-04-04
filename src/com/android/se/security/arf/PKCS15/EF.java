@@ -30,6 +30,7 @@ import com.android.se.security.arf.DERParser;
 import com.android.se.security.arf.SecureElement;
 import com.android.se.security.arf.SecureElementException;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /** Base class for ARF Data Objects */
@@ -166,7 +167,7 @@ public class EF {
      * @param path Path of the file
      * @return Command status code [sw1 sw2]
      */
-    public int selectFile(byte[] path) throws SecureElementException {
+    public int selectFile(byte[] path) throws IOException, SecureElementException {
         if ((path == null) || (path.length == 0) || ((path.length % 2) != 0)) {
             throw new SecureElementException("Incorrect path");
         }
@@ -209,7 +210,7 @@ public class EF {
      * @param nbBytes Number of bytes to read
      * @return Data retreived from the file
      */
-    public byte[] readBinary(int offset, int nbBytes) throws SecureElementException {
+    public byte[] readBinary(int offset, int nbBytes) throws IOException, SecureElementException {
         if (mFileSize == 0) return null;
         if (nbBytes == -1) nbBytes = mFileSize;
         if (mFileType != EF) throw new SecureElementException("Incorrect file type");
@@ -246,7 +247,7 @@ public class EF {
      * @param record Record ID [0..n]
      * @return Data from requested record
      */
-    public byte[] readRecord(short record) throws SecureElementException {
+    public byte[] readRecord(short record) throws IOException, SecureElementException {
         // Check the type of current selected file
         if (mFileType != EF) throw new SecureElementException("Incorrect file type");
         if (mFileStructure != LINEAR_FIXED) {

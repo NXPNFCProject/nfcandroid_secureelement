@@ -42,6 +42,7 @@ import com.android.se.security.arf.DERParser;
 import com.android.se.security.arf.SecureElement;
 import com.android.se.security.arf.SecureElementException;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /** EF_DIR related features */
@@ -93,7 +94,8 @@ public class EFDIR extends EF {
      * @param aid Record key to search for
      * @return Path to "EF_ODF" when an expected record is found; <code>null</code> otherwise
      */
-    public byte[] lookupAID(byte[] aid) throws PKCS15Exception, SecureElementException {
+    public byte[] lookupAID(byte[] aid) throws IOException, PKCS15Exception,
+            SecureElementException {
         Log.i(TAG, "Analysing EF_DIR...");
 
         if (selectFile(EFDIR_PATH) != APDU_SUCCESS) throw new PKCS15Exception("EF_DIR not found!!");

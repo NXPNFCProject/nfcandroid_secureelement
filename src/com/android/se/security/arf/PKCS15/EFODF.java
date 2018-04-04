@@ -47,6 +47,8 @@ import com.android.se.security.arf.DERParser;
 import com.android.se.security.arf.SecureElement;
 import com.android.se.security.arf.SecureElementException;
 
+import java.io.IOException;
+
 /** EF_ODF related features */
 public class EFODF extends EF {
 
@@ -104,7 +106,8 @@ public class EFODF extends EF {
      *
      * @return Path to "EF_DODF" from "DODF Tag" entry; <code>null</code> otherwise
      */
-    public byte[] analyseFile(byte[] pkcs15Path) throws PKCS15Exception, SecureElementException {
+    public byte[] analyseFile(byte[] pkcs15Path) throws IOException, PKCS15Exception,
+            SecureElementException {
         Log.i(mTag, "Analysing EF_ODF...");
 
         // 2012-04-12

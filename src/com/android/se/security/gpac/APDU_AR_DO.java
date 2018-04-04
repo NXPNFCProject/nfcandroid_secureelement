@@ -111,6 +111,12 @@ public class APDU_AR_DO extends BerTlv {
         // or
         // it contains APDU filter (APDUHeader | FilterMask) which should have length n*8.
         if (getValueLength() == 1) {
+            if ((data[index] != 0x00) && (data[index] != 0x01)) {
+                // Undefined value cannot be treated as a general APDU access rule.
+                // Access to the SE shall not be allowed when the interpretation error occurs.
+                throw new ParserException("Invalid value of APDU-AR-DO : " + String.format("%02x",
+                        data[index] & 0xff));
+            }
             mApduAllowed = (data[index] == 0x01);
         } else if ((getValueLength() % 8 == 0) && (getValueLength() != 0)) {
             mApduAllowed = true;

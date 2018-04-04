@@ -47,6 +47,7 @@ import com.android.se.security.arf.DERParser;
 import com.android.se.security.arf.SecureElement;
 import com.android.se.security.arf.SecureElementException;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /** EF_ACMain related features */
@@ -95,7 +96,7 @@ public class EFACMain extends EF {
      *
      * @return Path to "EF_ACRules" if "RefreshTag" has been updated; <code>null</code> otherwise
      */
-    public byte[] analyseFile() throws PKCS15Exception, SecureElementException {
+    public byte[] analyseFile() throws IOException, PKCS15Exception, SecureElementException {
         Log.i(TAG, "Analysing EF_ACMain...");
         byte[] path = mACMainPath;
 

@@ -49,6 +49,7 @@ import com.android.se.security.arf.SecureElement;
 import com.android.se.security.arf.SecureElementException;
 import com.android.se.security.gpac.AID_REF_DO;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -75,7 +76,7 @@ public class EFACRules extends EF {
      *
      * @param buffer ASN.1 data
      */
-    private void decodeDER(byte[] buffer) throws PKCS15Exception {
+    private void decodeDER(byte[] buffer) throws IOException, PKCS15Exception {
         byte[] aid = null;
         DERParser der = new DERParser(buffer);
 
@@ -129,8 +130,8 @@ public class EFACRules extends EF {
      *
      * @param path Path of the "EF_ACRules" file
      */
-    public void analyseFile(byte[] path) throws PKCS15Exception, SecureElementException {
-
+    public void analyseFile(byte[] path) throws IOException, PKCS15Exception,
+            SecureElementException {
         Log.i(TAG, "Analysing EF_ACRules...");
 
         // clear EF AC Condition data cache.

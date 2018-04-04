@@ -49,7 +49,9 @@ import com.android.se.security.gpac.AID_REF_DO;
 import com.android.se.security.gpac.Hash_REF_DO;
 import com.android.se.security.gpac.REF_DO;
 
+import java.io.IOException;
 import java.util.MissingResourceException;
+import java.util.NoSuchElementException;
 
 /**
  * Provides high-level functions for SE communication
@@ -80,9 +82,12 @@ public class SecureElement {
      * @param cmd APDU command
      * @return Data returned by the APDU command
      */
-    public byte[] exchangeAPDU(EF ef, byte[] cmd) throws SecureElementException {
+    public byte[] exchangeAPDU(EF ef, byte[] cmd) throws IOException, SecureElementException {
         try {
             return mArfChannel.transmit(cmd);
+        } catch (IOException e) {
+            // Communication error happened while the terminal sending a command.
+            throw e;
         } catch (Exception e) {
             throw new SecureElementException(
                     "Secure Element access error " + e.getLocalizedMessage());
@@ -95,22 +100,19 @@ public class SecureElement {
      * @param aid Applet identifier
      * @return Handle to "Logical Channel" allocated by the SE; <code>0</code> if error occurred
      */
-    public Channel openLogicalArfChannel(byte[] aid) {
+    public Channel openLogicalArfChannel(byte[] aid) throws IOException, MissingResourceException,
+            NoSuchElementException {
         try {
             mArfChannel = mTerminalHandle.openLogicalChannelWithoutChannelAccess(aid);
             if (mArfChannel == null) {
-                return null;
+                throw new MissingResourceException("No channel was available", "", "");
             }
             setUpChannelAccess(mArfChannel);
             return mArfChannel;
+        } catch (IOException | MissingResourceException | NoSuchElementException e) {
+            throw e;
         } catch (Exception e) {
-            if (e instanceof MissingResourceException) {
-                // this indicates that no channel is left for accessing the SE element
-                Log.e(mTag, "no channels left to access ARF: " + e.getMessage());
-                throw (MissingResourceException) e;
-            } else {
-                Log.e(mTag, "Error opening logical channel " + e.getLocalizedMessage());
-            }
+            Log.e(mTag, "Error opening logical channel " + e.getLocalizedMessage());
             mArfChannel = null;
             return null;
         }

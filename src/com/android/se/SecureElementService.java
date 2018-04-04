@@ -50,16 +50,19 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.ServiceSpecificException;
 import android.se.omapi.ISecureElementChannel;
 import android.se.omapi.ISecureElementListener;
 import android.se.omapi.ISecureElementReader;
 import android.se.omapi.ISecureElementService;
 import android.se.omapi.ISecureElementSession;
+import android.se.omapi.SEService;
 import android.util.Log;
 
 import com.android.se.Terminal.SecureElementReader;
 
 import java.io.FileDescriptor;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.AccessControlException;
 import java.util.ArrayList;
@@ -76,7 +79,7 @@ public final class SecureElementService extends Service {
     public static final String ESE_TERMINAL = "eSE";
     public static final String VIRTUAL_ISO_TERMINAL = "VirtualISO";
     public static final String NFC_SMB_TERMINAL = "nfc";
-    private final String mTag = "SecureElement";
+    private final String mTag = "SecureElementService";
     // LinkedHashMap will maintain the order of insertion
     private LinkedHashMap<String, Terminal> mTerminals = new LinkedHashMap<String, Terminal>();
     private final ISecureElementService.Stub mSecureElementServiceBinder =
@@ -109,7 +112,7 @@ public final class SecureElementService extends Service {
                         throw new IllegalArgumentException("package names not specified");
                     }
                     Terminal terminal = getTerminal(reader);
-                    return terminal.isNfcEventAllowed(getPackageManager(), aid, packageNames, true);
+                    return terminal.isNfcEventAllowed(getPackageManager(), aid, packageNames);
                 }
 
                 @Override
@@ -286,6 +289,9 @@ public final class SecureElementService extends Service {
                 throw new IllegalStateException("Session is closed");
             } else if (listener == null) {
                 throw new NullPointerException("listener must not be null");
+            } else if (mReader.getTerminal().getName().startsWith(
+                    SecureElementService.UICC_TERMINAL)) {
+                return null;
             } else if ((p2 != 0x00) && (p2 != 0x04) && (p2 != 0x08)
                     && (p2 != (byte) 0x0C)) {
                 throw new UnsupportedOperationException("p2 not supported: "
@@ -293,8 +299,17 @@ public final class SecureElementService extends Service {
             }
 
             String packageName = getPackageNameFromCallingUid(Binder.getCallingUid());
-            Channel channel = mReader.getTerminal().openBasicChannel(this, aid,
-                    p2, listener, packageName, Binder.getCallingPid());
+            Channel channel = null;
+
+            try {
+                channel = mReader.getTerminal().openBasicChannel(this, aid, p2, listener,
+                        packageName, Binder.getCallingPid());
+            } catch (IOException e) {
+                throw new ServiceSpecificException(SEService.IO_ERROR, e.getMessage());
+            } catch (NoSuchElementException e) {
+                throw new ServiceSpecificException(SEService.NO_SUCH_ELEMENT_ERROR, e.getMessage());
+            }
+
             if (channel == null) {
                 Log.i(mTag, "OpenBasicChannel() - returning null");
                 return null;
@@ -313,6 +328,9 @@ public final class SecureElementService extends Service {
                 throw new IllegalStateException("Session is closed");
             } else if (listener == null) {
                 throw new NullPointerException("listener must not be null");
+            } else if (((aid == null) || (aid.length == 0)) && mReader.getTerminal().getName()
+                    .startsWith(SecureElementService.UICC_TERMINAL)) {
+                return null;
             } else if ((p2 != 0x00) && (p2 != 0x04) && (p2 != 0x08)
                     && (p2 != (byte) 0x0C)) {
                 throw new UnsupportedOperationException("p2 not supported: "
@@ -320,8 +338,16 @@ public final class SecureElementService extends Service {
             }
 
             String packageName = getPackageNameFromCallingUid(Binder.getCallingUid());
-            Channel channel = mReader.getTerminal().openLogicalChannel(this, aid, p2,
-                    listener, packageName, Binder.getCallingPid());
+            Channel channel = null;
+
+            try {
+                channel = mReader.getTerminal().openLogicalChannel(this, aid, p2, listener,
+                        packageName, Binder.getCallingPid());
+            } catch (IOException e) {
+                throw new ServiceSpecificException(SEService.IO_ERROR, e.getMessage());
+            } catch (NoSuchElementException e) {
+                throw new ServiceSpecificException(SEService.NO_SUCH_ELEMENT_ERROR, e.getMessage());
+            }
 
             if (channel == null) {
                 Log.i(mTag, "openLogicalChannel() - returning null");
