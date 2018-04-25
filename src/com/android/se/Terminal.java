@@ -30,6 +30,9 @@ import android.hardware.secure_element.V1_0.ISecureElementHalCallback;
 import android.hardware.secure_element.V1_0.LogicalChannelResponse;
 import android.hardware.secure_element.V1_0.SecureElementStatus;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HwBinder;
+import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceSpecificException;
 import android.se.omapi.ISecureElementListener;
@@ -67,6 +70,8 @@ public class Terminal {
     private boolean mDefaultApplicationSelectedOnBasicChannel = true;
 
     private static final boolean DEBUG = Build.IS_DEBUGGABLE;
+    private static final int GET_SERVICE_DELAY_MILLIS = 4 * 1000;
+    private static final int EVENT_GET_HAL = 1;
 
     private ISecureElement mSEHal;
 
@@ -89,26 +94,70 @@ public class Terminal {
                     } catch (Exception e) {
                         // ignore
                     }
-                    synchronized (mLock) {
-                        mDefaultApplicationSelectedOnBasicChannel = true;
-                    }
+                    mDefaultApplicationSelectedOnBasicChannel = true;
                 }
             }
         }
     };
 
-    public Terminal(String name, Context context, ISecureElement seHal) {
-        if (seHal == null) {
-            throw new IllegalArgumentException("ISecureElement cannot be null ");
+    class SecureElementDeathRecipient implements HwBinder.DeathRecipient {
+        @Override
+        public void serviceDied(long cookie) {
+            Log.e(mTag, mName + " died");
+            synchronized (mLock) {
+                mIsConnected = false;
+                if (mAccessControlEnforcer != null) {
+                    mAccessControlEnforcer.reset();
+                }
+            }
+            mHandler.sendMessageDelayed(mHandler.obtainMessage(EVENT_GET_HAL, 0),
+                    GET_SERVICE_DELAY_MILLIS);
         }
+    }
+
+    private HwBinder.DeathRecipient mDeathRecipient = new SecureElementDeathRecipient();
+
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message message) {
+            switch (message.what) {
+                case EVENT_GET_HAL:
+                    try {
+                        initialize();
+                    } catch (Exception e) {
+                        Log.e(mTag, mName + " could not be initialized again");
+                        sendMessageDelayed(obtainMessage(EVENT_GET_HAL, 0),
+                                GET_SERVICE_DELAY_MILLIS);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
+
+    public Terminal(String name, Context context) {
         mContext = context;
         mName = name;
         mTag = "SecureElement-Terminal-" + getName();
-        mSEHal = seHal;
-        try {
-            seHal.init(mHalCallback);
-        } catch (RemoteException e) {
+    }
+
+    /**
+     * Initializes the terminal
+     *
+     * @throws NoSuchElementException if there is no HAL implementation for the specified SE name
+     * @throws RemoteException if there is a failure communicating with the remote
+     */
+    public void initialize() throws NoSuchElementException, RemoteException {
+        synchronized (mLock) {
+            mSEHal = ISecureElement.getService(mName);
+            if (mSEHal == null) {
+                throw new NoSuchElementException("No HAL is provided for " + mName);
+            }
+            mSEHal.init(mHalCallback);
+            mSEHal.linkToDeath(mDeathRecipient, 0);
         }
+        Log.i(mTag, mName + " was initialized");
     }
 
     private ArrayList<Byte> byteArrayToArrayList(byte[] array) {
@@ -172,6 +221,21 @@ public class Terminal {
         Channel[] channelList = col.toArray(new Channel[col.size()]);
         for (Channel channel : channelList) {
             closeChannel(channel);
+        }
+    }
+
+    /**
+     * Closes the terminal.
+     */
+    public void close() {
+        synchronized (mLock) {
+            if (mSEHal != null) {
+                try {
+                    mSEHal.unlinkToDeath(mDeathRecipient);
+                } catch (RemoteException e) {
+                    // ignore
+                }
+            }
         }
     }
 

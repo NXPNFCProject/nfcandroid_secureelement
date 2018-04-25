@@ -45,7 +45,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.hardware.secure_element.V1_0.ISecureElement;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -122,7 +121,6 @@ public final class SecureElementService extends Service {
                     }
                 }
             };
-    private Context mContext;
 
     public SecureElementService() {
         super();
@@ -155,8 +153,6 @@ public final class SecureElementService extends Service {
     @Override
     public void onCreate() {
         Log.i(mTag, Thread.currentThread().getName() + " onCreate");
-
-        mContext = getApplicationContext();
         createTerminals();
         ServiceManager.addService(Context.SECURE_ELEMENT_SERVICE, mSecureElementServiceBinder);
     }
@@ -169,24 +165,23 @@ public final class SecureElementService extends Service {
         Log.i(mTag, "onDestroy");
         for (Terminal terminal : mTerminals.values()) {
             terminal.closeChannels();
+            terminal.close();
         }
     }
 
     private void addTerminals(String terminalName) {
         int index = 1;
-        String name = terminalName + Integer.toString(index);
+        String name = null;
         try {
-            ISecureElement seHal = ISecureElement.getService(name);
-            while (seHal != null) {
-                Terminal terminal = new Terminal(name, mContext, seHal);
-                mTerminals.put(name, terminal);
-                index++;
+            do {
                 name = terminalName + Integer.toString(index);
-                seHal = ISecureElement.getService(name);
-            }
+                Terminal terminal = new Terminal(name, this);
+                terminal.initialize();
+                mTerminals.put(name, terminal);
+            } while (++index > 0);
         } catch (NoSuchElementException e) {
-            //Thrown if the HAL implementation doesn't exist.
-        } catch (RemoteException e) {
+            Log.i(mTag, "No HAL implementation for " + name);
+        } catch (RemoteException | RuntimeException e) {
             Log.e(mTag, "Error in getService() for " + name);
         }
     }
@@ -203,7 +198,6 @@ public final class SecureElementService extends Service {
         addTerminals(ESE_TERMINAL);
         addTerminals(VIRTUAL_ISO_TERMINAL);
         addTerminals(UICC_TERMINAL);
-        return;
     }
 
     private String getPackageNameFromCallingUid(int uid) {
