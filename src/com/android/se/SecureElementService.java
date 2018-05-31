@@ -57,6 +57,7 @@ public final class SecureElementService extends Service {
 
     public static final String UICC_TERMINAL = "SIM";
     public static final String ESE_TERMINAL = "eSE";
+    public static final String DWP_TERMINAL = "wiredse";
     private final String mTag = "SecureElementService";
     // LinkedHashMap will maintain the order of insertion
     private LinkedHashMap<String, Terminal> mTerminals = new LinkedHashMap<String, Terminal>();
@@ -168,6 +169,13 @@ public final class SecureElementService extends Service {
     private void createTerminals() {
         // Check for all SE HAL implementations
         addTerminals(ESE_TERMINAL);
+        try {
+            Thread.sleep(8000);
+        }
+        catch(InterruptedException e) {
+            Log.e(mTag, "Thread Sleep Interrupted");
+        }
+        addTerminals(DWP_TERMINAL);
         addTerminals(UICC_TERMINAL);
     }
 
