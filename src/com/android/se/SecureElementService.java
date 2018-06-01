@@ -26,6 +26,9 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.nfc.NfcAdapter;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -59,6 +62,9 @@ public final class SecureElementService extends Service {
     public static final String ESE_TERMINAL = "eSE";
     public static final String DWP_TERMINAL = "wiredse";
     private final String mTag = "SecureElementService";
+
+    private BroadcastReceiver mnfcReceiver;
+
     // LinkedHashMap will maintain the order of insertion
     private LinkedHashMap<String, Terminal> mTerminals = new LinkedHashMap<String, Terminal>();
     private final ISecureElementService.Stub mSecureElementServiceBinder =
@@ -133,6 +139,7 @@ public final class SecureElementService extends Service {
     @Override
     public void onCreate() {
         Log.i(mTag, Thread.currentThread().getName() + " onCreate");
+        registerAdapterStateChangedEvent(getApplicationContext());
         createTerminals();
         ServiceManager.addService(Context.SECURE_ELEMENT_SERVICE, mSecureElementServiceBinder);
     }
@@ -148,6 +155,27 @@ public final class SecureElementService extends Service {
             terminal.close();
         }
     }
+
+    private void registerAdapterStateChangedEvent(Context context) {
+    IntentFilter intentFilter = new IntentFilter(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED);
+    mnfcReceiver =
+        new BroadcastReceiver() {
+          @Override
+          public void onReceive(Context context, Intent intent) {
+            final boolean nfcAdapterAction =
+                intent.getAction().equals(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED);
+            final boolean nfcAdapterOn =
+                nfcAdapterAction
+                    && intent.getIntExtra(NfcAdapter.EXTRA_ADAPTER_STATE, NfcAdapter.STATE_OFF)
+                        == NfcAdapter.STATE_ON; // is NFC Adapter turned on ?
+            if (nfcAdapterOn) {
+              Log.i(mTag, "NFC Adapter is ON. Adding DWP_TERMINAL");
+              addTerminals(DWP_TERMINAL);
+            }
+          }
+        };
+    context.registerReceiver(mnfcReceiver, intentFilter);
+  }
 
     private void addTerminals(String terminalName) {
         int index = 1;
@@ -169,13 +197,6 @@ public final class SecureElementService extends Service {
     private void createTerminals() {
         // Check for all SE HAL implementations
         addTerminals(ESE_TERMINAL);
-        try {
-            Thread.sleep(8000);
-        }
-        catch(InterruptedException e) {
-            Log.e(mTag, "Thread Sleep Interrupted");
-        }
-        addTerminals(DWP_TERMINAL);
         addTerminals(UICC_TERMINAL);
     }
 
