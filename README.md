@@ -4,7 +4,7 @@
 
 | DESCRIPTION        | CHECKOUT COMMAND          |
 | :-------------: |:-------------:| 
-| NXPNFC_P61_JCOP_Kit    |  git clone https://github.com/NXPNFCProject/nfcandroid_secureelement.git |
+| nfcandroid_secureelement    |  git clone https://github.com/NXPNFCProject/nfcandroid_secureelement.git |
 
 ####Supported Android Versions
 
