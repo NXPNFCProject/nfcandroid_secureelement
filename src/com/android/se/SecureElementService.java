@@ -186,12 +186,6 @@ public final class SecureElementService extends Service {
 
     private void createTerminals() {
         // Check for all eSE HAL implementations
-        // Delay added before NFC terminal init
-        try {
-            Thread.sleep(5000);
-        }
-        catch(InterruptedException e) {
-        }
         addTerminals(ESE_TERMINAL);
         addTerminals(UICC_TERMINAL);
     }
