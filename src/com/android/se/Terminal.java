@@ -20,6 +20,25 @@
 /*
  * Contributed by: Giesecke & Devrient GmbH.
  */
+/******************************************************************************
+ *
+ *  The original Work has been changed by NXP Semiconductors.
+ *
+ *  Copyright 2018 NXP Semiconductors
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ ******************************************************************************/
 
 package com.android.se;
 
@@ -31,6 +50,7 @@ import android.hardware.secure_element.V1_0.LogicalChannelResponse;
 import android.hardware.secure_element.V1_0.SecureElementStatus;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Binder;
 import android.os.HwBinder;
 import android.os.Message;
 import android.os.RemoteException;
@@ -55,6 +75,32 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
 
+import java.io.ByteArrayInputStream;
+import android.content.pm.PackageInfo;
+import android.content.pm.Signature;
+import java.security.MessageDigest;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
+import vendor.nxp.nxpese.V1_0.INxpEse;
+import vendor.nxp.nxpese.V1_0.INxpEse.Stub;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import android.app.Activity;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.Signature;
+import android.os.Bundle;
+import android.util.Log;
+
+
 /**
  * Each Terminal represents a Secure Element.
  * Communicates to the SE via SecureElement HAL.
@@ -72,8 +118,11 @@ public class Terminal {
     private static final boolean DEBUG = Build.IS_DEBUGGABLE;
     private static final int GET_SERVICE_DELAY_MILLIS = 4 * 1000;
     private static final int EVENT_GET_HAL = 1;
+    private static final long HAL_ESE_IOCTL_OMAPI_TRY_GET_ESE_SESSION = 35;
+    private static final long HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION = 36;
 
     private ISecureElement mSEHal;
+    private INxpEse mNxpEseHal;
 
     /** For each Terminal there will be one AccessController object. */
     private AccessControlEnforcer mAccessControlEnforcer;
@@ -161,7 +210,19 @@ public class Terminal {
             }
             mSEHal.init(mHalCallback);
             mSEHal.linkToDeath(mDeathRecipient, 0);
+
+            if (mNxpEseHal == null) {
+                try {
+                    mNxpEseHal = INxpEse.getService(true /* retry */);
+                } catch(Exception e) {
+                    Log.e(mTag, "Error getting HAL for NxpEse");
+                }
+            }
+            if (mNxpEseHal == null) {
+                throw new NoSuchElementException("No HAL is provided for NxpEse");
+            }
         }
+
         Log.i(mTag, mName + " was initialized");
     }
 
@@ -526,6 +587,9 @@ public class Terminal {
                 sw1 = rsp[rsp.length - 2] & 0xFF;
                 sw2 = rsp[rsp.length - 1] & 0xFF;
             } while (sw1 == 0x61);
+        } else if ((sw1 == 0x65) && (sw2 == 0x15)) {
+            Log.e(mTag, "Secure Element write failed, Nfc in use");
+            throw new IOException("Secure Element write failed, Nfc in use");
         }
         return rsp;
     }
@@ -543,6 +607,24 @@ public class Terminal {
         byte[] rsp = arrayListToByteArray(response);
         if (DEBUG) {
             Log.i(mTag, "Sent : " + ByteArrayConverter.byteArrayToHexString(cmd));
+            Log.i(mTag, "Received : " + ByteArrayConverter.byteArrayToHexString(rsp));
+        }
+        return rsp;
+    }
+
+    private byte[] nxpEseHalIoctlInternal(long ioctlType, byte[] ioctlData) throws IOException {
+        ArrayList<Byte> ioctlResponse;
+        try {
+            ioctlResponse = mNxpEseHal.ioctl(ioctlType, byteArrayToArrayList(ioctlData));
+        } catch (RemoteException e) {
+            throw new IOException(e.getMessage());
+        }
+        if (ioctlResponse.isEmpty()) {
+            throw new IOException("Error in transmit()");
+        }
+        byte[] rsp = arrayListToByteArray(ioctlResponse);
+        if (DEBUG) {
+            Log.i(mTag, "Sent : " + ByteArrayConverter.byteArrayToHexString(ioctlData));
             Log.i(mTag, "Received : " + ByteArrayConverter.byteArrayToHexString(rsp));
         }
         return rsp;
@@ -709,6 +791,17 @@ public class Terminal {
             if (session == null) {
                 throw new NullPointerException("session is null");
             }
+            synchronized (mLock) {
+                String callingPackageName = mService.getPackageManager().getNameForUid(
+                        Binder.getCallingUid());
+                String hash = getPublicKeySHA1(callingPackageName);
+                try {
+                    Log.i(mTag, "removeSession(): Package Name:" + callingPackageName + " SHA:" + hash);
+                    nxpEseHalIoctlInternal(HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION, hexString2ByteArray(hash));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
             mSessions.remove(session);
             synchronized (mLock) {
                 if (mSessions.size() == 0) {
@@ -723,8 +816,22 @@ public class Terminal {
                 throw new ServiceSpecificException(SEService.IO_ERROR,
                         "Secure Element is not present.");
             }
-
             synchronized (mLock) {
+                String callingPackageName = mService.getPackageManager().getNameForUid(
+                        Binder.getCallingUid());
+                String hash = getPublicKeySHA1(callingPackageName);
+                byte[] rsp = new byte[]{ (byte)(256) };
+                try {
+                    Log.i(mTag, "openSession(): Package Name:" + callingPackageName + " SHA:" + hash);
+                    rsp = nxpEseHalIoctlInternal(HAL_ESE_IOCTL_OMAPI_TRY_GET_ESE_SESSION, hexString2ByteArray(hash));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if((rsp[8] == 0x3A) && (rsp[9] == 0x00)) {
+                    throw new ServiceSpecificException(SEService.NFC_IN_USE,
+                            "Secure Element session can not be established, Nfc in use.");
+                }
+
                 SecureElementSession session = mService.new SecureElementSession(this);
                 mSessions.add(session);
                 return session;
@@ -733,6 +840,64 @@ public class Terminal {
 
         Terminal getTerminal() {
             return Terminal.this;
+        }
+
+        private String getPublicKeySHA1(String pkg) {
+            PackageManager pm = mContext.getPackageManager();
+            PackageInfo packageInfo = null;
+            try {
+                packageInfo = pm.getPackageInfo(pkg, PackageManager.GET_SIGNATURES);
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+            Signature[] signatures = packageInfo.signatures;
+            byte[] cert = signatures[0].toByteArray();
+            InputStream input = new ByteArrayInputStream(cert);
+            CertificateFactory certfact = null;
+            try {
+                certfact = CertificateFactory.getInstance("X509");
+            } catch (CertificateException e) {
+                e.printStackTrace();
+            }
+            X509Certificate x509cert = null;
+            try {
+                x509cert = (X509Certificate) certfact.generateCertificate(input);
+            } catch (CertificateException e) {
+                e.printStackTrace();
+            }
+            String hexSHA1 = null;
+            try {
+                MessageDigest md = MessageDigest.getInstance("SHA1");
+                byte[] publicKey = md.digest(x509cert.getEncoded());
+                hexSHA1 = byteArray2HexString(publicKey);
+            } catch (NoSuchAlgorithmException e1) {
+                e1.printStackTrace();
+            } catch (CertificateEncodingException e) {
+                e.printStackTrace();
+            }
+            return hexSHA1;
+        }
+
+        public String byteArray2HexString(byte[] arr) {
+            StringBuilder str = new StringBuilder(arr.length * 2);
+            for (int i = 0; i < arr.length; i++) {
+                String h = Integer.toHexString(arr[i]);
+                int l = h.length();
+                if (l == 1) h = "0" + h;
+                if (l > 2) h = h.substring(l - 2, l);
+                str.append(h.toUpperCase());
+            }
+            return str.toString();
+        }
+
+        public byte[] hexString2ByteArray(String s) {
+            int len = s.length();
+            byte[] data = new byte[len / 2];
+            for (int i = 0; i < len; i += 2) {
+                data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                                     + Character.digit(s.charAt(i+1), 16));
+            }
+            return data;
         }
     }
 }
