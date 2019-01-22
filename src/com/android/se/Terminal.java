@@ -635,13 +635,11 @@ public class Terminal {
      */
     public boolean[] isNfcEventAllowed(PackageManager packageManager, byte[] aid,
             String[] packageNames) {
-        boolean checkRefreshTag = true;
         if (mAccessControlEnforcer == null) {
             try {
                 initializeAccessControl();
                 // Just finished to initialize the access control enforcer.
                 // It is too much to check the refresh tag in this case.
-                checkRefreshTag = false;
             } catch (Exception e) {
                 Log.i(mTag, "isNfcEventAllowed Exception: " + e.getMessage());
                 return null;
@@ -651,8 +649,7 @@ public class Terminal {
 
         synchronized (mLock) {
             try {
-                return mAccessControlEnforcer.isNfcEventAllowed(aid, packageNames,
-                        checkRefreshTag);
+                return mAccessControlEnforcer.isNfcEventAllowed(aid, packageNames);
             } catch (Exception e) {
                 Log.i(mTag, "isNfcEventAllowed Exception: " + e.getMessage());
                 return null;

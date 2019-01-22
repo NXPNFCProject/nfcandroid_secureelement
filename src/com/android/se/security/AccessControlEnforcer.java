@@ -382,9 +382,9 @@ public class AccessControlEnforcer {
 
     /** Returns true if the given application is allowed to recieve NFC Events */
     public synchronized boolean[] isNfcEventAllowed(byte[] aid,
-            String[] packageNames, boolean checkRefreshTag) {
+            String[] packageNames) {
         if (mUseAra || mUseArf) {
-            return internal_isNfcEventAllowed(aid, packageNames, checkRefreshTag);
+            return internal_isNfcEventAllowed(aid, packageNames);
         } else {
             // if ARA and ARF is not available and
             // - terminal DOES NOT belong to a UICC -> mFullAccess is true
@@ -398,15 +398,7 @@ public class AccessControlEnforcer {
     }
 
     private synchronized boolean[] internal_isNfcEventAllowed(byte[] aid,
-            String[] packageNames, boolean checkRefreshTag) {
-        if (checkRefreshTag) {
-            try {
-                updateAccessRuleIfNeed();
-            } catch (IOException | MissingResourceException e) {
-                throw new AccessControlException("Access-Control not found in "
-                        + mTerminal.getName());
-            }
-        }
+            String[] packageNames) {
 
         int i = 0;
         boolean[] nfcEventFlags = new boolean[packageNames.length];
