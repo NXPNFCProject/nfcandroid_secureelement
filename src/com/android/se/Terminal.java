@@ -160,6 +160,8 @@ public class Terminal {
             Log.e(mTag, mName + " died");
             synchronized (mLock) {
                 mIsConnected = false;
+                if(mName.equals("eSE1"))
+                    mNxpEseHal = null;
                 if (mAccessControlEnforcer != null) {
                     mAccessControlEnforcer.reset();
                 }
@@ -211,15 +213,17 @@ public class Terminal {
             mSEHal.init(mHalCallback);
             mSEHal.linkToDeath(mDeathRecipient, 0);
 
-            if (mNxpEseHal == null) {
-                try {
-                    mNxpEseHal = INxpEse.getService(true /* retry */);
-                } catch(Exception e) {
-                    Log.e(mTag, "Error getting HAL for NxpEse");
+            if(mName.equals("eSE1")) {
+                if (mNxpEseHal == null) {
+                    try {
+                        mNxpEseHal = INxpEse.getService(true /* retry */);
+                    } catch(Exception e) {
+                        Log.e(mTag, "Error getting HAL for NxpEse");
+                    }
                 }
-            }
-            if (mNxpEseHal == null) {
-                throw new NoSuchElementException("No HAL is provided for NxpEse");
+                if (mNxpEseHal == null) {
+                    throw new NoSuchElementException("No HAL is provided for NxpEse");
+                }
             }
         }
 
@@ -788,15 +792,17 @@ public class Terminal {
             if (session == null) {
                 throw new NullPointerException("session is null");
             }
-            synchronized (mLock) {
-                String callingPackageName = mService.getPackageManager().getNameForUid(
-                        Binder.getCallingUid());
-                String hash = getPublicKeySHA1(callingPackageName);
-                try {
-                    Log.i(mTag, "removeSession(): Package Name:" + callingPackageName + " SHA:" + hash);
-                    nxpEseHalIoctlInternal(HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION, hexString2ByteArray(hash));
-                } catch (Exception e) {
-                    e.printStackTrace();
+            if(mName.equals("eSE1")) {
+                synchronized (mLock) {
+                    String callingPackageName = mService.getPackageManager().getNameForUid(
+                            Binder.getCallingUid());
+                    String hash = getPublicKeySHA1(callingPackageName);
+                    try {
+                        Log.i(mTag, "removeSession(): Package Name:" + callingPackageName + " SHA:" + hash);
+                        nxpEseHalIoctlInternal(HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION, hexString2ByteArray(hash));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
             mSessions.remove(session);
@@ -814,19 +820,21 @@ public class Terminal {
                         "Secure Element is not present.");
             }
             synchronized (mLock) {
-                String callingPackageName = mService.getPackageManager().getNameForUid(
-                        Binder.getCallingUid());
-                String hash = getPublicKeySHA1(callingPackageName);
-                byte[] rsp = new byte[]{ (byte)(256) };
-                try {
-                    Log.i(mTag, "openSession(): Package Name:" + callingPackageName + " SHA:" + hash);
-                    rsp = nxpEseHalIoctlInternal(HAL_ESE_IOCTL_OMAPI_TRY_GET_ESE_SESSION, hexString2ByteArray(hash));
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                if((rsp[8] == 0x3A) && (rsp[9] == 0x00)) {
-                    throw new ServiceSpecificException(SEService.NFC_IN_USE,
-                            "Secure Element session can not be established, Nfc in use.");
+                if(mName.equals("eSE1")) {
+                    String callingPackageName = mService.getPackageManager().getNameForUid(
+                            Binder.getCallingUid());
+                    String hash = getPublicKeySHA1(callingPackageName);
+                    byte[] rsp = new byte[]{ (byte)(256) };
+                    try {
+                        Log.i(mTag, "openSession(): Package Name:" + callingPackageName + " SHA:" + hash);
+                        rsp = nxpEseHalIoctlInternal(HAL_ESE_IOCTL_OMAPI_TRY_GET_ESE_SESSION, hexString2ByteArray(hash));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    if((rsp[8] == 0x3A) && (rsp[9] == 0x00)) {
+                        throw new ServiceSpecificException(SEService.NFC_IN_USE,
+                                "Secure Element session can not be established, Nfc in use.");
+                    }
                 }
 
                 SecureElementSession session = mService.new SecureElementSession(this);
