@@ -186,8 +186,8 @@ public class Terminal {
                 }
             }
             if (seHal11 != null) {
-                seHal11.init_1_1(mHalCallback11);
                 mSEHal = seHal11;
+                seHal11.init_1_1(mHalCallback11);
             } else {
                 mSEHal.init(mHalCallback);
             }
