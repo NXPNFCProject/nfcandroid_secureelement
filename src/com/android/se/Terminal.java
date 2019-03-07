@@ -171,8 +171,14 @@ public class Terminal {
      */
     public void initialize() throws NoSuchElementException, RemoteException {
         synchronized (mLock) {
-            android.hardware.secure_element.V1_1.ISecureElement seHal11 =
-                    android.hardware.secure_element.V1_1.ISecureElement.getService(mName, true);
+            android.hardware.secure_element.V1_1.ISecureElement seHal11 = null;
+            try {
+                seHal11 =
+                        android.hardware.secure_element.V1_1.ISecureElement.getService(mName, true);
+            } catch (Exception e) {
+                Log.d(mTag, "SE Hal V1.1 is not supported");
+            }
+
             if (seHal11 == null) {
                 mSEHal = ISecureElement.getService(mName, true);
                 if (mSEHal == null) {
