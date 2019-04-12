@@ -4,6 +4,7 @@ android_app {
     platform_apis: true,
     certificate: "platform",
     static_libs: ["android.hardware.secure_element-V1.0-java",
+                  "android.hardware.secure_element-V1.1-java",
                   "vendor.nxp.nxpese-V1.0-java"],
     optimize: {
         enabled: false,
