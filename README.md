@@ -6,6 +6,16 @@
 | :-------------: |:-------------:| 
 | nfcandroid_secureelement    |  git clone https://github.com/NXPNFCProject/nfcandroid_secureelement.git |
 
+
+
+
+#### Supported Versions on "br_android_ncihalx_q" Branch for Android Q 
+
+| Android Version        | NXP Release          | NXP Tag  |
+| :-------------: |:---------------------:| :-----:|
+| aosp-master                |  10.00.04 (SN100x) |  NFC_AR_00_2000_10.00.04_OpnSrc  |
+
+
 #### Supported Android Versions on "br_android_ncihalx_p" Branch
 
 | Android Version        | NXP Release          | NXP Tag  |
@@ -26,13 +36,6 @@
 | android-p-preview 2               |  9.00.17 (SN100x) |  NFC_NCIHALx_AR2000.09.00.17_OpnSrc |
 | android-p-preview 2               |  9.00.18 (SN100x) |  NFC_NCIHALx_AR2000.09.00.18_OpnSrc |
 
-
-
-#### Supported versions on "br_android_ncihalx_q"
-
-| Android Version        | NXP Release          | NXP Tag  |
-| :-------------: |:---------------------:| :-----:|
-| aosp-master                |  10.00.04 (SN100x) |  NFC_AR_00_2000_10.00.04_OpnSrc  |
 
 
 
