@@ -26,7 +26,7 @@
 | android-p-preview 2               |  9.00.17 (SN100x) |  NFC_NCIHALx_AR2000.09.00.17_OpnSrc |
 
 
-#### Supported Versions on "br_android_ncihalx_q" branch for Android Q
+#### Supported versions on "br_android_ncihalx_q"
 
 | Android Version        | NXP Release          | NXP Tag  |
 | :-------------: |:---------------------:| :-----:|
