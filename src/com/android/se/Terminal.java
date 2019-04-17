@@ -120,6 +120,11 @@ public class Terminal {
     private static final int EVENT_GET_HAL = 1;
     private static final long HAL_ESE_IOCTL_OMAPI_TRY_GET_ESE_SESSION = 35;
     private static final long HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION = 36;
+    /**
+     * Error code used with ServiceSpecificException.
+     * Thrown if RF is observed ON while opening connection to ESE over SPI.
+     */
+    private static final int NFC_IN_USE = 3;
 
     private ISecureElement mSEHal;
     private INxpEse mNxpEseHal;
@@ -863,7 +868,7 @@ public class Terminal {
                         e.printStackTrace();
                     }
                     if((rsp[8] == 0x3A) && (rsp[9] == 0x00)) {
-                        throw new ServiceSpecificException(SEService.NFC_IN_USE,
+                        throw new ServiceSpecificException(NFC_IN_USE,
                                 "Secure Element session can not be established, Nfc in use.");
                     }
                 }
