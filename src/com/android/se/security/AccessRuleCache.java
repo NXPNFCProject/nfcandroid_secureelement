@@ -135,12 +135,20 @@ public class AccessRuleCache {
 
     /** Adds the Rule to the Cache */
     public void putWithMerge(REF_DO refDo, AR_DO arDo) {
+        if (refDo.isCarrierPrivilegeRefDo()) {
+            // Ignore Carrier Privilege Rules
+            return;
+        }
         ChannelAccess channelAccess = mapArDo2ChannelAccess(arDo);
         putWithMerge(refDo, channelAccess);
     }
 
     /** Adds the Rule to the Cache */
     public void putWithMerge(REF_DO refDo, ChannelAccess channelAccess) {
+        if (refDo.isCarrierPrivilegeRefDo()) {
+            // Ignore Carrier Privilege Rules
+            return;
+        }
         if (mRuleCache.containsKey(refDo)) {
             ChannelAccess ca = mRuleCache.get(refDo);
 
