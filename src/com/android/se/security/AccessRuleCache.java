@@ -310,6 +310,15 @@ public class AccessRuleCache {
         ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
         if (mRuleCache.containsKey(ref_do)) {
+            // let's take care about the undefined rules, according to the GP specification:
+            ChannelAccess ca = mRuleCache.get(ref_do);
+            if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
+                ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
+            }
+            if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
+                    && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
+                ca.setNFCEventAccess(ca.getApduAccess());
+            }
             if (DEBUG) {
                 Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
                         + mRuleCache.get(ref_do).toString());
@@ -367,6 +376,15 @@ public class AccessRuleCache {
         ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
         if (mRuleCache.containsKey(ref_do)) {
+            // let's take care about the undefined rules, according to the GP specification:
+            ChannelAccess ca = mRuleCache.get(ref_do);
+            if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
+                ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
+            }
+            if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
+                    && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
+                ca.setNFCEventAccess(ca.getApduAccess());
+            }
             if (DEBUG) {
                 Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
                         + mRuleCache.get(ref_do).toString());
