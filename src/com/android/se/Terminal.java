@@ -361,7 +361,11 @@ public class Terminal {
             if (responseList.isEmpty()) {
                 return null;
             }
-            return arrayListToByteArray(responseList);
+            byte[] atr = arrayListToByteArray(responseList);
+            if (DEBUG) {
+                Log.i(mTag, "ATR : " + ByteArrayConverter.byteArrayToHexString(atr));
+            }
+            return atr;
         } catch (RemoteException e) {
             Log.e(mTag, "Exception in getAtr()" + e);
             return null;
