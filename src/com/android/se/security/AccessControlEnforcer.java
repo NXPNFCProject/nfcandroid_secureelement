@@ -437,7 +437,7 @@ public class AccessControlEnforcer {
                 // These errors must be distinguished from other ones.
                 throw e;
             } catch (Exception e) {
-                Log.e(mTag, e.getMessage());
+                throw new AccessControlException("No ARF found in " + mTerminal.getName());
             }
         }
     }
