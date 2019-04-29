@@ -50,18 +50,13 @@ import com.android.se.security.ChannelAccess.ACCESS;
 import com.android.se.security.ara.AraController;
 import com.android.se.security.arf.ArfController;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.AccessControlException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
 
@@ -88,28 +83,6 @@ public class AccessControlEnforcer {
 
     public static byte[] getDefaultAccessControlAid() {
         return AraController.getAraMAid();
-    }
-
-    private static Certificate decodeCertificate(byte[] certData) throws CertificateException {
-        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-        X509Certificate cert =
-                (X509Certificate) certFactory.generateCertificate(
-                        new ByteArrayInputStream(certData));
-        return cert;
-    }
-
-    /** Returns the Hash of the Application */
-    public static byte[] getAppCertHash(Certificate appCert) throws CertificateEncodingException {
-        MessageDigest md = null;
-        try {
-            md = MessageDigest.getInstance("SHA");
-        } catch (NoSuchAlgorithmException e) {
-            throw new AccessControlException("Exception getting SHA for the signature");
-        }
-        if (md == null) {
-            throw new AccessControlException("Hash can not be computed");
-        }
-        return md.digest(appCert.getEncoded());
     }
 
     public PackageManager getPackageManager() {
@@ -316,17 +289,17 @@ public class AccessControlEnforcer {
             throw new AccessControlException("package names must be specified");
         }
         try {
-            // estimate SHA-1 hash value of the device application's certificate.
-            Certificate[] appCerts = getAPPCerts(packageName);
+            // estimate SHA-1 and SHA-256 hash values of the device application's certificate.
+            List<byte[]> appCertHashes = getAppCertHashes(packageName);
             // APP certificates must be available => otherwise Exception
-            if (appCerts == null || appCerts.length == 0) {
+            if (appCertHashes == null || appCertHashes.size() == 0) {
                 throw new AccessControlException(
                         "Application certificates are invalid or do not exist.");
             }
             if (checkRefreshTag) {
                 updateAccessRuleIfNeed();
             }
-            return getAccessRule(aid, appCerts);
+            return getAccessRule(aid, appCertHashes);
         } catch (IOException | MissingResourceException e) {
             throw e;
         } catch (Throwable exp) {
@@ -336,13 +309,13 @@ public class AccessControlEnforcer {
 
     /** Fetches the Access Rules for the given application and AID pair */
     public ChannelAccess getAccessRule(
-            byte[] aid, Certificate[] appCerts)
-            throws AccessControlException, CertificateEncodingException {
+            byte[] aid, List<byte []> appCertHashes)
+            throws AccessControlException {
         ChannelAccess channelAccess = null;
         // if read all is true get rule from cache.
         if (mRulesRead) {
             // get rules from internal storage
-            channelAccess = mAccessRuleCache.findAccessRule(aid, appCerts);
+            channelAccess = mAccessRuleCache.findAccessRule(aid, appCertHashes);
         }
         // if no rule was found return an empty access rule
         // with all access denied.
@@ -356,10 +329,10 @@ public class AccessControlEnforcer {
     }
 
     /**
-     * Returns Certificate chain for one package.
+     * Returns hashes of certificate chain for one package.
      */
-    private Certificate[] getAPPCerts(String packageName)
-            throws CertificateException, NoSuchAlgorithmException, AccessControlException {
+    private List<byte[]> getAppCertHashes(String packageName)
+            throws NoSuchAlgorithmException, AccessControlException {
         if (packageName == null || packageName.length() == 0) {
             throw new AccessControlException("Package Name not defined");
         }
@@ -373,11 +346,17 @@ public class AccessControlEnforcer {
         if (foundPkgInfo == null) {
             throw new AccessControlException("Package does not exist");
         }
-        ArrayList<Certificate> appCerts = new ArrayList<Certificate>();
-        for (Signature signature : foundPkgInfo.signatures) {
-            appCerts.add(decodeCertificate(signature.toByteArray()));
+        MessageDigest md = MessageDigest.getInstance("SHA");
+        MessageDigest md256 = MessageDigest.getInstance("SHA-256");
+        if (md == null || md256 == null) {
+            throw new AccessControlException("Hash can not be computed");
         }
-        return appCerts.toArray(new Certificate[appCerts.size()]);
+        List<byte[]> appCertHashes = new ArrayList<byte[]>();
+        for (Signature signature : foundPkgInfo.signatures) {
+            appCertHashes.add(md.digest(signature.toByteArray()));
+            appCertHashes.add(md256.digest(signature.toByteArray()));
+        }
+        return appCertHashes;
     }
 
     /** Returns true if the given application is allowed to recieve NFC Events */
@@ -403,14 +382,14 @@ public class AccessControlEnforcer {
         int i = 0;
         boolean[] nfcEventFlags = new boolean[packageNames.length];
         for (String packageName : packageNames) {
-            // estimate SHA-1 hash value of the device application's certificate.
+            // estimate hash value of the device application's certificate.
             try {
-                Certificate[] appCerts = getAPPCerts(packageName);
+                List<byte[]> appCertHashes = getAppCertHashes(packageName);
                 // APP certificates must be available => otherwise Exception
-                if (appCerts == null || appCerts.length == 0) {
+                if (appCertHashes == null || appCertHashes.size() == 0) {
                     nfcEventFlags[i] = false;
                 } else {
-                    ChannelAccess channelAccess = getAccessRule(aid, appCerts);
+                    ChannelAccess channelAccess = getAccessRule(aid, appCertHashes);
                     nfcEventFlags[i] =
                             (channelAccess.getNFCEventAccess() == ChannelAccess.ACCESS.ALLOWED);
                 }

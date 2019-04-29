@@ -45,12 +45,11 @@ import com.android.se.security.gpac.REF_DO;
 
 import java.io.PrintWriter;
 import java.security.AccessControlException;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -248,7 +247,7 @@ public class AccessRuleCache {
     }
 
     /** Find Access Rule for the given AID and Application */
-    public ChannelAccess findAccessRule(byte[] aid, Certificate[] appCerts)
+    public ChannelAccess findAccessRule(byte[] aid, List<byte[]> appCertHashes)
             throws AccessControlException {
 
         // TODO: check difference between DeviceCertHash and Certificate Chain (EndEntityCertHash,
@@ -264,29 +263,25 @@ public class AccessRuleCache {
         AID_REF_DO aid_ref_do = getAidRefDo(aid);
         REF_DO ref_do;
         Hash_REF_DO hash_ref_do;
-        for (Certificate appCert : appCerts) {
-            try {
-                hash_ref_do = new Hash_REF_DO(AccessControlEnforcer.getAppCertHash(appCert));
-                ref_do = new REF_DO(aid_ref_do, hash_ref_do);
+        for (byte[] appCertHash : appCertHashes) {
+            hash_ref_do = new Hash_REF_DO(appCertHash);
+            ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
-                if (mRuleCache.containsKey(ref_do)) {
-                    // let's take care about the undefined rules, according to the GP specification:
-                    ChannelAccess ca = mRuleCache.get(ref_do);
-                    if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
-                        ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-                    }
-                    if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                            && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                        ca.setNFCEventAccess(ca.getApduAccess());
-                    }
-                    if (DEBUG) {
-                        Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
-                                + mRuleCache.get(ref_do).toString());
-                    }
-                    return mRuleCache.get(ref_do);
+            if (mRuleCache.containsKey(ref_do)) {
+                // let's take care about the undefined rules, according to the GP specification:
+                ChannelAccess ca = mRuleCache.get(ref_do);
+                if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
+                    ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
                 }
-            } catch (CertificateEncodingException e) {
-                throw new AccessControlException("Problem with Application Certificate.");
+                if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
+                        && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
+                    ca.setNFCEventAccess(ca.getApduAccess());
+                }
+                if (DEBUG) {
+                    Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
+                            + mRuleCache.get(ref_do).toString());
+                }
+                return mRuleCache.get(ref_do);
             }
         }
         // no rule found,
@@ -328,29 +323,25 @@ public class AccessRuleCache {
 
         // Search Rule C ( Certificate(s); <AllSEApplications> )
         aid_ref_do = new AID_REF_DO(AID_REF_DO.TAG);
-        for (Certificate appCert : appCerts) {
-            try {
-                hash_ref_do = new Hash_REF_DO(AccessControlEnforcer.getAppCertHash(appCert));
-                ref_do = new REF_DO(aid_ref_do, hash_ref_do);
+        for (byte[] appCertHash : appCertHashes) {
+            hash_ref_do = new Hash_REF_DO(appCertHash);
+            ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
-                if (mRuleCache.containsKey(ref_do)) {
-                    // let's take care about the undefined rules, according to the GP specification:
-                    ChannelAccess ca = mRuleCache.get(ref_do);
-                    if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
-                        ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-                    }
-                    if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                            && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                        ca.setNFCEventAccess(ca.getApduAccess());
-                    }
-                    if (DEBUG) {
-                        Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
-                                + mRuleCache.get(ref_do).toString());
-                    }
-                    return mRuleCache.get(ref_do);
+            if (mRuleCache.containsKey(ref_do)) {
+                // let's take care about the undefined rules, according to the GP specification:
+                ChannelAccess ca = mRuleCache.get(ref_do);
+                if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
+                    ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
                 }
-            } catch (CertificateEncodingException e) {
-                throw new AccessControlException("Problem with Application Certificate.");
+                if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
+                        && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
+                    ca.setNFCEventAccess(ca.getApduAccess());
+                }
+                if (DEBUG) {
+                    Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
+                            + mRuleCache.get(ref_do).toString());
+                }
+                return mRuleCache.get(ref_do);
             }
         }
 
