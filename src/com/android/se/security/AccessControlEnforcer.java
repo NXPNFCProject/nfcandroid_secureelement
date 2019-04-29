@@ -46,6 +46,7 @@ import android.util.Log;
 import com.android.se.Channel;
 import com.android.se.SecureElementService;
 import com.android.se.Terminal;
+import com.android.se.internal.ByteArrayConverter;
 import com.android.se.security.ChannelAccess.ACCESS;
 import com.android.se.security.ara.AraController;
 import com.android.se.security.arf.ArfController;
@@ -64,6 +65,7 @@ import java.util.NoSuchElementException;
 public class AccessControlEnforcer {
 
     private final String mTag = "SecureElement-AccessControlEnforcer";
+    private static final boolean DEBUG = Build.IS_DEBUGGABLE;
     private PackageManager mPackageManager = null;
     private AraController mAraController = null;
     private boolean mUseAra = true;
@@ -228,7 +230,11 @@ public class AccessControlEnforcer {
         }
         String reason = ca.getReason();
         if (reason.length() == 0) {
-            reason = "Command not allowed!";
+            reason = "Unspecified";
+        }
+        if (DEBUG) {
+            Log.i(mTag, "checkCommand() : Access = " + ca.getAccess() + " APDU Access = "
+                    + ca.getApduAccess() + " Reason = " + reason);
         }
         if (ca.getAccess() != ACCESS.ALLOWED) {
             throw new AccessControlException(mTag + reason);
@@ -311,6 +317,12 @@ public class AccessControlEnforcer {
     public ChannelAccess getAccessRule(
             byte[] aid, List<byte []> appCertHashes)
             throws AccessControlException {
+        if (DEBUG) {
+            for (byte[] appCertHash : appCertHashes) {
+                Log.i(mTag, "getAccessRule() appCert = "
+                        + ByteArrayConverter.byteArrayToHexString(appCertHash));
+            }
+        }
         ChannelAccess channelAccess = null;
         // if read all is true get rule from cache.
         if (mRulesRead) {
