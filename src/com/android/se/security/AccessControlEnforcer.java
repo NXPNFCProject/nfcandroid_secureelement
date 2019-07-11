@@ -70,6 +70,7 @@ public class AccessControlEnforcer {
 
     private final String mTag = "SecureElement-AccessControlEnforcer";
     private PackageManager mPackageManager = null;
+    private boolean mNoRuleFound = false;
     private AraController mAraController = null;
     private boolean mUseAra = true;
     private ArfController mArfController = null;
@@ -147,12 +148,7 @@ public class AccessControlEnforcer {
         mInitialChannelAccess.setAccess(ChannelAccess.ACCESS.ALLOWED, "");
 
         readSecurityProfile();
-
-        if (!mTerminal.getName().startsWith(SecureElementService.UICC_TERMINAL)) {
-            // When SE is not the UICC then it's allowed to grant full access if no
-            // rules can be retreived.
-            mFullAccess = true;
-        }
+        mNoRuleFound = false;
 
         // 1 - Let's try to use ARA
         if (mUseAra && mAraController == null) {
@@ -174,6 +170,12 @@ public class AccessControlEnforcer {
                 denyMsg = e.getLocalizedMessage();
                 if (e instanceof NoSuchElementException) {
                     Log.i(mTag, "No ARA applet found in: " + mTerminal.getName());
+                    if (!mUseArf) {
+                        // ARA does not exist on the secure element right now,
+                        // but it might be installed later.
+                        mNoRuleFound = true;
+                        status = mFullAccess;
+                    }
                 } else if (mTerminal.getName().startsWith(SecureElementService.UICC_TERMINAL)) {
                     // A possible explanation could simply be due to the fact that the UICC is old
                     // and does not support logical channel (and is not compliant with GP spec).
@@ -198,12 +200,6 @@ public class AccessControlEnforcer {
         }
 
         // 2 - Let's try to use ARF since ARA cannot be used
-        if (mUseArf && !mTerminal.getName().startsWith(SecureElementService.UICC_TERMINAL)) {
-            Log.i(mTag, "Disable ARF for terminal: " + mTerminal.getName()
-                    + " (ARF is only available for UICC)");
-            mUseArf = false; // Arf is only supproted on UICC
-        }
-
         if (mUseArf && mArfController == null) {
             mArfController = new ArfController(mAccessRuleCache, mTerminal);
         }
@@ -221,15 +217,17 @@ public class AccessControlEnforcer {
                 mUseArf = false;
                 denyMsg = e.getLocalizedMessage();
                 Log.e(mTag, e.getMessage());
-                if (mFullAccess) {
-                    if (!(e instanceof NoSuchElementException)) {
-                        // It is not 100% sure if the expected ARF really does not exist.
-                        // No ARF might be due to a kind of temporary problem like missing resource,
-                        // so full access should not be granted in this case.
-                        mFullAccess = false;
-                        status = false;
-                    }
+                if (e instanceof NoSuchElementException) {
+                    Log.i(mTag, "No ARF found in: " + mTerminal.getName());
+                    // ARF does not exist on the secure element right now,
+                    // but it might be added later.
+                    mNoRuleFound = true;
+                    status = mFullAccess;
                 } else {
+                    // It is not 100% sure if the expected ARF really does not exist.
+                    // No ARF might be due to a kind of temporary problem,
+                    // so full access should not be granted in this case.
+                    mFullAccess = false;
                     status = false;
                 }
             }
@@ -244,6 +242,15 @@ public class AccessControlEnforcer {
         }
 
         mRulesRead = status;
+    }
+
+    /**
+     * Returns the result of the previous attempt to select ARA and/or ARF.
+     *
+     * @return true if no rule was found in the previous attempt.
+     */
+    public boolean isNoRuleFound() {
+        return mNoRuleFound;
     }
 
     /** Check if the Channel has permission for the given APDU */
@@ -487,6 +494,13 @@ public class AccessControlEnforcer {
             } else {
                 mFullAccess = false;
             }
+        }
+        if (!mTerminal.getName().startsWith(SecureElementService.UICC_TERMINAL)) {
+            // It shall be allowed to grant full access if no rule can be retrieved
+            // from the secure element except for UICC.
+            mFullAccess = true;
+            // ARF is supported only on UICC.
+            mUseArf = false;
         }
         Log.i(
                 mTag,
