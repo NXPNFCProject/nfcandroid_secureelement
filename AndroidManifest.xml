@@ -7,7 +7,7 @@
                  android:persistent="true">
         <service android:name=".SecureElementService">
             <intent-filter>
-                <action android:name="android.omapi.ISecureElementService"/>
+                <action android:name="android.se.omapi.ISecureElementService"/>
             </intent-filter>
         </service>
     </application>
