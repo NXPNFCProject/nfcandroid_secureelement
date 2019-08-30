@@ -1,12 +1,12 @@
 # nfcandroid_secureelement
 
-####Git Repository
+#### Git Repository
 
 | DESCRIPTION        | CHECKOUT COMMAND          |
 | :-------------: |:-------------:| 
 | nfcandroid_secureelement    |  git clone https://github.com/NXPNFCProject/nfcandroid_secureelement.git |
 
-####Supported Android Versions
+#### Supported Android Versions
 
 | Android Version        | NXP Release          | NXP Tag  |
 | :-------------: |:-------------:| :-----:|
@@ -23,3 +23,19 @@
 | android-p-preview 2               |  9.00.13 (SN100x) |  NFC_NCIHALx_AR2000.09.00.13_OpnSrc |
 | android-p-preview 2               |  9.00.15 (SN100x) |  NFC_NCIHALx_AR2000.09.00.15_OpnSrc |
 | android-p-preview_2              |  9.00.07 (SN100) |  NFC_NCIHALx_AR6000.09.00.07_OpnSrc |
+
+
+
+
+
+#### Supported versions on "br_ar_p_sn1xx" branch
+| Android Version        | NXP Release          | NXP Tag  |
+| :-------------: |:---------------------:| :-----:|
+| aosp-master                |  09.00.08 (SN100x) |  NFC_AR_00_2000_09.00.08_OpnSrc  |
+
+
+
+
+
+
+
