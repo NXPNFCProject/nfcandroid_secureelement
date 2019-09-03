@@ -138,6 +138,7 @@ public final class SecureElementService extends Service {
 
     @Override
     public void onCreate() {
+        super.onCreate();
         Log.i(mTag, Thread.currentThread().getName() + " onCreate");
         createTerminals();
         ServiceManager.addService(Context.SECURE_ELEMENT_SERVICE, mSecureElementServiceBinder);
@@ -148,6 +149,7 @@ public final class SecureElementService extends Service {
      * close all the channels.
      */
     public void onDestroy() {
+        super.onDestroy();
         Log.i(mTag, "onDestroy");
         for (Terminal terminal : mTerminals.values()) {
             terminal.closeChannels();

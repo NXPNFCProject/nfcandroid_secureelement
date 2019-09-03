@@ -316,19 +316,21 @@ public class Terminal {
         if (channel == null) {
             return;
         }
-        if (mIsConnected) {
-            try {
-                byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
-                /* For Basic Channels, errors are expected.
-                 * Underlying implementations use this call as an indication when there
-                 * aren't any users actively using the channel, and the chip can go
-                 * into low power state.
-                 */
-                if (!channel.isBasicChannel() && status != SecureElementStatus.SUCCESS) {
-                    Log.e(mTag, "Error closing channel " + channel.getChannelNumber());
+        synchronized (mLock) {
+            if (mIsConnected) {
+                try {
+                    byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
+                    /* For Basic Channels, errors are expected.
+                    * Underlying implementations use this call as an indication when there
+                    * aren't any users actively using the channel, and the chip can go
+                    * into low power state.
+                    */
+                    if (!channel.isBasicChannel() && status != SecureElementStatus.SUCCESS) {
+                        Log.e(mTag, "Error closing channel " + channel.getChannelNumber());
+                    }
+                } catch (RemoteException e) {
+                    Log.e(mTag, "Exception in closeChannel() " + e);
                 }
-            } catch (RemoteException e) {
-                Log.e(mTag, "Exception in closeChannel() " + e);
             }
         }
         synchronized (mLock) {
@@ -343,10 +345,12 @@ public class Terminal {
      * Cleans up all the channels in use.
      */
     public synchronized void closeChannels() {
-        Collection<Channel> col = mChannels.values();
-        Channel[] channelList = col.toArray(new Channel[col.size()]);
-        for (Channel channel : channelList) {
-            channel.close();
+        synchronized (mLock) {
+            Collection<Channel> col = mChannels.values();
+            Channel[] channelList = col.toArray(new Channel[col.size()]);
+            for (Channel channel : channelList) {
+                channel.close();
+            }
         }
     }
 
@@ -671,20 +675,22 @@ public class Terminal {
 
     private byte[] transmitInternal(byte[] cmd) throws IOException {
         ArrayList<Byte> response;
-        try {
-            response = mSEHal.transmit(byteArrayToArrayList(cmd));
-        } catch (RemoteException e) {
-            throw new IOException(e.getMessage());
+        synchronized (mLock) {
+            try {
+                response = mSEHal.transmit(byteArrayToArrayList(cmd));
+            } catch (RemoteException e) {
+                throw new IOException(e.getMessage());
+            }
+            if (response.isEmpty()) {
+                throw new IOException("Error in transmit()");
+            }
+            byte[] rsp = arrayListToByteArray(response);
+            if (DEBUG) {
+                Log.i(mTag, "Sent : " + ByteArrayConverter.byteArrayToHexString(cmd));
+                Log.i(mTag, "Received : " + ByteArrayConverter.byteArrayToHexString(rsp));
+            }
+            return rsp;
         }
-        if (response.isEmpty()) {
-            throw new IOException("Error in transmit()");
-        }
-        byte[] rsp = arrayListToByteArray(response);
-        if (DEBUG) {
-            Log.i(mTag, "Sent : " + ByteArrayConverter.byteArrayToHexString(cmd));
-            Log.i(mTag, "Received : " + ByteArrayConverter.byteArrayToHexString(rsp));
-        }
-        return rsp;
     }
 
     private byte[] nxpEseHalIoctlInternal(long ioctlType, byte[] ioctlData) throws IOException {
@@ -738,11 +744,13 @@ public class Terminal {
      * Returns true if the Secure Element is present
      */
     public boolean isSecureElementPresent() {
-        try {
-            return mSEHal.isCardPresent();
-        } catch (RemoteException e) {
-            Log.e(mTag, "Error in isSecureElementPresent() " + e);
-            return false;
+        synchronized (mLock) {
+            try {
+                return mSEHal.isCardPresent();
+            } catch (RemoteException e) {
+                Log.e(mTag, "Error in isSecureElementPresent() " + e);
+                return false;
+            }
         }
     }
 
@@ -813,14 +821,15 @@ public class Terminal {
 
         /* Dump the list of currunlty openned channels */
         writer.println("List of open channels:");
-
-        for (Channel channel : mChannels.values()) {
-            writer.println("channel " + channel.getChannelNumber() + ": ");
-            writer.println("package: " + channel.getChannelAccess().getPackageName());
-            writer.println("pid: " + channel.getChannelAccess().getCallingPid());
-            writer.println("aid selected: " + channel.hasSelectedAid());
-            writer.println("basic channel: " + channel.isBasicChannel());
-            writer.println();
+        synchronized (mLock) {
+            for (Channel channel : mChannels.values()) {
+                writer.println("channel " + channel.getChannelNumber() + ": ");
+                writer.println("package: " + channel.getChannelAccess().getPackageName());
+                writer.println("pid: " + channel.getChannelAccess().getCallingPid());
+                writer.println("aid selected: " + channel.hasSelectedAid());
+                writer.println("basic channel: " + channel.isBasicChannel());
+                writer.println();
+            }
         }
         writer.println();
 
@@ -872,6 +881,9 @@ public class Terminal {
                     String callingPackageName = mService.getPackageManager().getNameForUid(
                             Binder.getCallingUid());
                     String hash = getPublicKeySHA1(callingPackageName);
+                    if (hash == null) {
+                        throw new NullPointerException("hash is null");
+                    }
                     try {
                         Log.i(mTag, "removeSession(): Package Name:" + callingPackageName + " SHA:" + hash);
                         nxpEseHalIoctlInternal(HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION, hexString2ByteArray(hash));
@@ -899,6 +911,9 @@ public class Terminal {
                     String callingPackageName = mService.getPackageManager().getNameForUid(
                             Binder.getCallingUid());
                     String hash = getPublicKeySHA1(callingPackageName);
+                    if (hash == null) {
+                        return null;
+                    }
                     byte[] rsp = new byte[]{ (byte)(256) };
                     try {
                         Log.i(mTag, "openSession(): Package Name:" + callingPackageName + " SHA:" + hash);
@@ -948,6 +963,9 @@ public class Terminal {
             String hexSHA1 = null;
             try {
                 MessageDigest md = MessageDigest.getInstance("SHA1");
+                if (x509cert == null) {
+                    return null;
+                }
                 byte[] publicKey = md.digest(x509cert.getEncoded());
                 hexSHA1 = byteArray2HexString(publicKey);
             } catch (NoSuchAlgorithmException e1) {
