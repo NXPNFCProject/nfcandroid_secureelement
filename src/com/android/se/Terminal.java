@@ -316,21 +316,19 @@ public class Terminal {
         if (channel == null) {
             return;
         }
-        synchronized (mLock) {
-            if (mIsConnected) {
-                try {
-                    byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
-                    /* For Basic Channels, errors are expected.
-                    * Underlying implementations use this call as an indication when there
-                    * aren't any users actively using the channel, and the chip can go
-                    * into low power state.
-                    */
-                    if (!channel.isBasicChannel() && status != SecureElementStatus.SUCCESS) {
-                        Log.e(mTag, "Error closing channel " + channel.getChannelNumber());
-                    }
-                } catch (RemoteException e) {
-                    Log.e(mTag, "Exception in closeChannel() " + e);
+        if (mIsConnected) {
+            try {
+                byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
+                /* For Basic Channels, errors are expected.
+                 * Underlying implementations use this call as an indication when there
+                 * aren't any users actively using the channel, and the chip can go
+                 * into low power state.
+                 */
+                if (!channel.isBasicChannel() && status != SecureElementStatus.SUCCESS) {
+                    Log.e(mTag, "Error closing channel " + channel.getChannelNumber());
                 }
+            } catch (RemoteException e) {
+                Log.e(mTag, "Exception in closeChannel() " + e);
             }
         }
         synchronized (mLock) {
@@ -345,12 +343,10 @@ public class Terminal {
      * Cleans up all the channels in use.
      */
     public synchronized void closeChannels() {
-        synchronized (mLock) {
-            Collection<Channel> col = mChannels.values();
-            Channel[] channelList = col.toArray(new Channel[col.size()]);
-            for (Channel channel : channelList) {
-                channel.close();
-            }
+        Collection<Channel> col = mChannels.values();
+        Channel[] channelList = col.toArray(new Channel[col.size()]);
+        for (Channel channel : channelList) {
+            channel.close();
         }
     }
 
@@ -675,22 +671,20 @@ public class Terminal {
 
     private byte[] transmitInternal(byte[] cmd) throws IOException {
         ArrayList<Byte> response;
-        synchronized (mLock) {
-            try {
-                response = mSEHal.transmit(byteArrayToArrayList(cmd));
-            } catch (RemoteException e) {
-                throw new IOException(e.getMessage());
-            }
-            if (response.isEmpty()) {
-                throw new IOException("Error in transmit()");
-            }
-            byte[] rsp = arrayListToByteArray(response);
-            if (DEBUG) {
-                Log.i(mTag, "Sent : " + ByteArrayConverter.byteArrayToHexString(cmd));
-                Log.i(mTag, "Received : " + ByteArrayConverter.byteArrayToHexString(rsp));
-            }
-            return rsp;
+        try {
+            response = mSEHal.transmit(byteArrayToArrayList(cmd));
+        } catch (RemoteException e) {
+            throw new IOException(e.getMessage());
         }
+        if (response.isEmpty()) {
+            throw new IOException("Error in transmit()");
+        }
+        byte[] rsp = arrayListToByteArray(response);
+        if (DEBUG) {
+            Log.i(mTag, "Sent : " + ByteArrayConverter.byteArrayToHexString(cmd));
+            Log.i(mTag, "Received : " + ByteArrayConverter.byteArrayToHexString(rsp));
+        }
+        return rsp;
     }
 
     private byte[] nxpEseHalIoctlInternal(long ioctlType, byte[] ioctlData) throws IOException {
@@ -744,13 +738,11 @@ public class Terminal {
      * Returns true if the Secure Element is present
      */
     public boolean isSecureElementPresent() {
-        synchronized (mLock) {
-            try {
-                return mSEHal.isCardPresent();
-            } catch (RemoteException e) {
-                Log.e(mTag, "Error in isSecureElementPresent() " + e);
-                return false;
-            }
+        try {
+            return mSEHal.isCardPresent();
+        } catch (RemoteException e) {
+            Log.e(mTag, "Error in isSecureElementPresent() " + e);
+            return false;
         }
     }
 
@@ -821,15 +813,14 @@ public class Terminal {
 
         /* Dump the list of currunlty openned channels */
         writer.println("List of open channels:");
-        synchronized (mLock) {
-            for (Channel channel : mChannels.values()) {
-                writer.println("channel " + channel.getChannelNumber() + ": ");
-                writer.println("package: " + channel.getChannelAccess().getPackageName());
-                writer.println("pid: " + channel.getChannelAccess().getCallingPid());
-                writer.println("aid selected: " + channel.hasSelectedAid());
-                writer.println("basic channel: " + channel.isBasicChannel());
-                writer.println();
-            }
+
+        for (Channel channel : mChannels.values()) {
+            writer.println("channel " + channel.getChannelNumber() + ": ");
+            writer.println("package: " + channel.getChannelAccess().getPackageName());
+            writer.println("pid: " + channel.getChannelAccess().getCallingPid());
+            writer.println("aid selected: " + channel.hasSelectedAid());
+            writer.println("basic channel: " + channel.isBasicChannel());
+            writer.println();
         }
         writer.println();
 
