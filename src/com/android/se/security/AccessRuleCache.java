@@ -302,7 +302,7 @@ public class AccessRuleCache {
 
             if (mRuleCache.containsKey(ref_do)) {
                 if (DEBUG) {
-                    Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
+                    Log.i(mTag, "findAccessRule() Case A " + ref_do.toString() + ", "
                             + mRuleCache.get(ref_do).toString());
                 }
                 return mRuleCache.get(ref_do);
@@ -330,7 +330,7 @@ public class AccessRuleCache {
 
         if (mRuleCache.containsKey(ref_do)) {
             if (DEBUG) {
-                Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
+                Log.i(mTag, "findAccessRule() Case B " + ref_do.toString() + ", "
                         + mRuleCache.get(ref_do).toString());
             }
             return mRuleCache.get(ref_do);
@@ -344,7 +344,7 @@ public class AccessRuleCache {
 
             if (mRuleCache.containsKey(ref_do)) {
                 if (DEBUG) {
-                    Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
+                    Log.i(mTag, "findAccessRule() Case C " + ref_do.toString() + ", "
                             + mRuleCache.get(ref_do).toString());
                 }
                 return mRuleCache.get(ref_do);
@@ -374,7 +374,7 @@ public class AccessRuleCache {
 
         if (mRuleCache.containsKey(ref_do)) {
             if (DEBUG) {
-                Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
+                Log.i(mTag, "findAccessRule() Case D " + ref_do.toString() + ", "
                         + mRuleCache.get(ref_do).toString());
             }
             return mRuleCache.get(ref_do);
