@@ -257,6 +257,31 @@ public class AccessRuleCache {
     /** Find Access Rule for the given AID and Application */
     public ChannelAccess findAccessRule(byte[] aid, List<byte[]> appCertHashes)
             throws AccessControlException {
+        ChannelAccess ca = findAccessRuleInternal(aid, appCertHashes);
+        if (ca != null) {
+            if ((ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) && !ca.isUseApduFilter()) {
+                // Rule for APDU access does not exist.
+                // All the APDU access requests shall never be allowed in this case.
+                // This missing rule resolution is valid for both ARA and ARF
+                // if the supported GP SEAC version is v1.1 or later.
+                ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
+            }
+            if (ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED) {
+                // Missing NFC access rule shall be treated as ALLOWED
+                // if relevant APDU access rule is ALLOWED or APDU filter is specified.
+                if (ca.isUseApduFilter()) {
+                    ca.setNFCEventAccess(ChannelAccess.ACCESS.ALLOWED);
+                } else {
+                    ca.setNFCEventAccess(ca.getApduAccess());
+                }
+            }
+            // Note that the GP SEAC v1.1 has not been supported as GSMA TS.26 does not require it.
+        }
+        return ca;
+    }
+
+    private ChannelAccess findAccessRuleInternal(byte[] aid, List<byte[]> appCertHashes)
+            throws AccessControlException {
 
         // TODO: check difference between DeviceCertHash and Certificate Chain (EndEntityCertHash,
         // IntermediateCertHash (1..n), RootCertHash)
@@ -276,15 +301,6 @@ public class AccessRuleCache {
             ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
             if (mRuleCache.containsKey(ref_do)) {
-                // let's take care about the undefined rules, according to the GP specification:
-                ChannelAccess ca = mRuleCache.get(ref_do);
-                if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
-                    ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-                }
-                if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                        && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                    ca.setNFCEventAccess(ca.getApduAccess());
-                }
                 if (DEBUG) {
                     Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
                             + mRuleCache.get(ref_do).toString());
@@ -313,15 +329,6 @@ public class AccessRuleCache {
         ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
         if (mRuleCache.containsKey(ref_do)) {
-            // let's take care about the undefined rules, according to the GP specification:
-            ChannelAccess ca = mRuleCache.get(ref_do);
-            if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
-                ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-            }
-            if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                    && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                ca.setNFCEventAccess(ca.getApduAccess());
-            }
             if (DEBUG) {
                 Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
                         + mRuleCache.get(ref_do).toString());
@@ -336,15 +343,6 @@ public class AccessRuleCache {
             ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
             if (mRuleCache.containsKey(ref_do)) {
-                // let's take care about the undefined rules, according to the GP specification:
-                ChannelAccess ca = mRuleCache.get(ref_do);
-                if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
-                    ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-                }
-                if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                        && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                    ca.setNFCEventAccess(ca.getApduAccess());
-                }
                 if (DEBUG) {
                     Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
                             + mRuleCache.get(ref_do).toString());
@@ -375,15 +373,6 @@ public class AccessRuleCache {
         ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
         if (mRuleCache.containsKey(ref_do)) {
-            // let's take care about the undefined rules, according to the GP specification:
-            ChannelAccess ca = mRuleCache.get(ref_do);
-            if (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
-                ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-            }
-            if ((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                    && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                ca.setNFCEventAccess(ca.getApduAccess());
-            }
             if (DEBUG) {
                 Log.i(mTag, "findAccessRule() " + ref_do.toString() + ", "
                         + mRuleCache.get(ref_do).toString());
