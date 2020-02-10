@@ -78,6 +78,9 @@ public class Terminal {
     /** For each Terminal there will be one AccessController object. */
     private AccessControlEnforcer mAccessControlEnforcer;
 
+    private static final String SECURE_ELEMENT_PRIVILEGED_PERMISSION =
+            "android.permission.SECURE_ELEMENT_PRIVILEGED";
+
     private ISecureElementHalCallback.Stub mHalCallback = new ISecureElementHalCallback.Stub() {
         @Override
         public void onStateChange(boolean state) {
@@ -633,13 +636,20 @@ public class Terminal {
         boolean checkRefreshTag = true;
         // Attempt to initialize the access control enforcer if it failed
         // due to a kind of temporary failure or no rule was found in the previous attempt.
-        if (mAccessControlEnforcer == null || mAccessControlEnforcer.isNoRuleFound()) {
+        // For privilege access, do not attempt to initialize the access control enforcer
+        // if no rule was found in the previous attempt.
+        if (mAccessControlEnforcer == null || (!isPrivilegedApplication(packageName)
+                && mAccessControlEnforcer.isNoRuleFound())) {
             initializeAccessControl();
             // Just finished to initialize the access control enforcer.
             // It is too much to check the refresh tag in this case.
             checkRefreshTag = false;
         }
         mAccessControlEnforcer.setPackageManager(mContext.getPackageManager());
+
+        if (isPrivilegedApplication(packageName)) {
+            return ChannelAccess.getPrivilegeAccess(packageName, pid);
+        }
 
         synchronized (mLock) {
             try {
@@ -676,6 +686,18 @@ public class Terminal {
                 throw e;
             }
         }
+    }
+
+    /**
+     * Checks if Secure Element Privilege permission exists for the given package
+     */
+    private boolean isPrivilegedApplication(String packageName) {
+        PackageManager pm = mContext.getPackageManager();
+        if (pm != null) {
+            return (pm.checkPermission(SECURE_ELEMENT_PRIVILEGED_PERMISSION,
+                    packageName) == PackageManager.PERMISSION_GRANTED);
+        }
+        return false;
     }
 
     public AccessControlEnforcer getAccessControlEnforcer() {

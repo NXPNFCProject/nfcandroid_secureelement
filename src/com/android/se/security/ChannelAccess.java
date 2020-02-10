@@ -132,6 +132,18 @@ public class ChannelAccess {
         mNFCEventAccess = access;
     }
 
+    /** Provides the ChannelAccess with Privilege Access */
+    public static ChannelAccess getPrivilegeAccess(String packageName, int pid) {
+        ChannelAccess ca = new ChannelAccess();
+        ca.setPackageName(packageName);
+        ca.setCallingPid(pid);
+        ca.setAccess(ACCESS.ALLOWED, "privilege application");
+        ca.setApduAccess(ACCESS.ALLOWED);
+        ca.setNFCEventAccess(ACCESS.ALLOWED);
+
+        return ca;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
