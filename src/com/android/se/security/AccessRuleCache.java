@@ -41,7 +41,6 @@ import android.util.Log;
 import com.android.se.security.gpac.AID_REF_DO;
 import com.android.se.security.gpac.AR_DO;
 import com.android.se.security.gpac.Hash_REF_DO;
-import com.android.se.security.gpac.PKG_REF_DO;
 import com.android.se.security.gpac.REF_DO;
 
 import java.io.PrintWriter;
@@ -66,7 +65,6 @@ public class AccessRuleCache {
     // recreated.
     private byte[] mRefreshTag = null;
     private Map<REF_DO, ChannelAccess> mRuleCache = new HashMap<REF_DO, ChannelAccess>();
-    private ArrayList<REF_DO> mCarrierPrivilegeCache = new ArrayList<REF_DO>();
 
     private static AID_REF_DO getAidRefDo(byte[] aid) {
         byte[] defaultAid = new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
@@ -128,19 +126,17 @@ public class AccessRuleCache {
     public void reset() {
         mRefreshTag = null;
         mRuleCache.clear();
-        mCarrierPrivilegeCache.clear();
     }
 
     /** Clears access rule cache only. */
     public void clearCache() {
         mRuleCache.clear();
-        mCarrierPrivilegeCache.clear();
     }
 
     /** Adds the Rule to the Cache */
     public void putWithMerge(REF_DO refDo, AR_DO arDo) {
         if (refDo.isCarrierPrivilegeRefDo()) {
-            mCarrierPrivilegeCache.add(refDo);
+            // Ignore Carrier Privilege Rules
             return;
         }
         ChannelAccess channelAccess = mapArDo2ChannelAccess(arDo);
@@ -150,7 +146,7 @@ public class AccessRuleCache {
     /** Adds the Rule to the Cache */
     public void putWithMerge(REF_DO refDo, ChannelAccess channelAccess) {
         if (refDo.isCarrierPrivilegeRefDo()) {
-            mCarrierPrivilegeCache.add(refDo);
+            // Ignore Carrier Privilege Rules
             return;
         }
         if (mRuleCache.containsKey(refDo)) {
@@ -465,27 +461,6 @@ public class AccessRuleCache {
         return null;
     }
 
-    /** Check if the carrier privilege exists for the given package */
-    public boolean checkCarrierPrivilege(String packageName, List<byte[]> appCertHashes) {
-        for (byte[] hash : appCertHashes) {
-            for (REF_DO ref_do : mCarrierPrivilegeCache) {
-                Hash_REF_DO hash_ref_do = ref_do.getHashDo();
-                PKG_REF_DO pkg_ref_do = ref_do.getPkgDo();
-                if (Hash_REF_DO.equals(hash_ref_do, new Hash_REF_DO(hash))) {
-                    // If PKG_REF_DO exists then package name should match, otherwise allow
-                    if (pkg_ref_do != null) {
-                        if (packageName.equals(pkg_ref_do.getPackageName())) {
-                            return true;
-                        }
-                    } else {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     /** Check if the given Refresh Tag is equal to the last known */
     public boolean isRefreshTagEqual(byte[] refreshTag) {
         if (refreshTag == null || mRefreshTag == null) return false;
@@ -522,16 +497,6 @@ public class AccessRuleCache {
             i++;
             writer.print("rule " + i + ": ");
             writer.println(entry.getKey().toString() + " -> " + entry.getValue().toString());
-        }
-        writer.println();
-
-        /* Dump the Carrier Privilege cache */
-        writer.println("Carrier Privilege:");
-        i = 0;
-        for (REF_DO ref_do  : mCarrierPrivilegeCache) {
-            i++;
-            writer.print("carrier privilege " + i + ": ");
-            writer.println(ref_do.toString());
         }
         writer.println();
     }
