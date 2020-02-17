@@ -19,6 +19,21 @@
 /*
  * Contributed by: Giesecke & Devrient GmbH.
  */
+/*
+ * Copyright 2020 NXP
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.android.se;
 
@@ -240,8 +255,10 @@ public class Channel implements IBinder.DeathRecipient {
             // if not an exception is thrown
             mTerminal.getAccessControlEnforcer().checkCommand(this, command);
         } else {
-            throw new SecurityException("Access Controller not set for Terminal: "
-                    + mTerminal.getName());
+            // Allow for Privilage Access
+            if (ChannelAccess.ACCESS.ALLOWED != mChannelAccess.getPrivilegeAccess())
+                throw new SecurityException("Access Controller not set for Terminal: "
+                      + mTerminal.getName());
         }
     }
 

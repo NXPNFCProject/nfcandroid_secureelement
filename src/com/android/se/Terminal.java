@@ -20,6 +20,21 @@
 /*
  * Contributed by: Giesecke & Devrient GmbH.
  */
+/*
+ * Copyright 2020 NXP
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.android.se;
 
@@ -667,6 +682,9 @@ public class Terminal {
     private ChannelAccess setUpChannelAccess(byte[] aid, String packageName, int pid)
             throws IOException, MissingResourceException {
         boolean checkRefreshTag = true;
+        if ((mAccessControlEnforcer == null) && isPrivilegedApplication(packageName)) {
+            return ChannelAccess.getPrivilegeAccess(packageName, pid);
+        }
         // Attempt to initialize the access control enforcer if it failed
         // due to a kind of temporary failure or no rule was found in the previous attempt.
         // For privilege access, do not attempt to initialize the access control enforcer
@@ -679,7 +697,6 @@ public class Terminal {
             checkRefreshTag = false;
         }
         mAccessControlEnforcer.setPackageManager(mContext.getPackageManager());
-
         if (isPrivilegedApplication(packageName)) {
             return ChannelAccess.getPrivilegeAccess(packageName, pid);
         }
