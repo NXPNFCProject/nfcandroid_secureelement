@@ -561,7 +561,7 @@ public class Terminal {
 
         if (sw1 == 0x6C) {
             cmd[cmd.length - 1] = rsp[rsp.length - 1];
-            rsp = transmitInternal(cmd);
+            rsp = transmit(cmd);
         } else if (sw1 == 0x61) {
             do {
                 byte[] getResponseCmd = new byte[]{
