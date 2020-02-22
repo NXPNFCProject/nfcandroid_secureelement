@@ -739,6 +739,10 @@ public class Terminal {
         return mAccessControlEnforcer;
     }
 
+    public Context getContext() {
+        return mContext;
+    }
+
     /** Dump data for debug purpose . */
     public void dump(PrintWriter writer) {
         writer.println("SECURE ELEMENT SERVICE TERMINAL: " + mName);
