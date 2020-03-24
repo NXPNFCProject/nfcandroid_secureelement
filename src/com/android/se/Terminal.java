@@ -238,22 +238,22 @@ public class Terminal {
         if (channel == null) {
             return;
         }
-        if (mIsConnected) {
-            try {
-                byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
-                /* For Basic Channels, errors are expected.
-                 * Underlying implementations use this call as an indication when there
-                 * aren't any users actively using the channel, and the chip can go
-                 * into low power state.
-                 */
-                if (!channel.isBasicChannel() && status != SecureElementStatus.SUCCESS) {
-                    Log.e(mTag, "Error closing channel " + channel.getChannelNumber());
-                }
-            } catch (RemoteException e) {
-                Log.e(mTag, "Exception in closeChannel() " + e);
-            }
-        }
         synchronized (mLock) {
+            if (mIsConnected) {
+                try {
+                    byte status = mSEHal.closeChannel((byte) channel.getChannelNumber());
+                    /* For Basic Channels, errors are expected.
+                     * Underlying implementations use this call as an indication when there
+                     * aren't any users actively using the channel, and the chip can go
+                     * into low power state.
+                     */
+                    if (!channel.isBasicChannel() && status != SecureElementStatus.SUCCESS) {
+                        Log.e(mTag, "Error closing channel " + channel.getChannelNumber());
+                    }
+                } catch (RemoteException e) {
+                    Log.e(mTag, "Exception in closeChannel() " + e);
+                }
+            }
             mChannels.remove(channel.getChannelNumber(), channel);
             if (mChannels.get(channel.getChannelNumber()) != null) {
                 Log.e(mTag, "Removing channel failed");
