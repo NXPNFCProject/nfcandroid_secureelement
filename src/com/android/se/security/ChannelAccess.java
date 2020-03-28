@@ -144,6 +144,17 @@ public class ChannelAccess {
         return ca;
     }
 
+    /** Provides the ChannelAccess with CarrierPrivilege Access */
+    public static ChannelAccess getCarrierPrivilegeAccess(String packageName, int pid) {
+        ChannelAccess ca = new ChannelAccess();
+        ca.setPackageName(packageName);
+        ca.setCallingPid(pid);
+        ca.setAccess(ACCESS.ALLOWED, "Carrier-Privilege");
+        ca.setApduAccess(ACCESS.ALLOWED);
+
+        return ca;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

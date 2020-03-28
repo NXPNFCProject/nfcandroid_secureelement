@@ -24,7 +24,9 @@
 package com.android.se;
 
 import android.content.Context;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.hardware.secure_element.V1_0.ISecureElement;
 import android.hardware.secure_element.V1_0.ISecureElementHalCallback;
 import android.hardware.secure_element.V1_0.LogicalChannelResponse;
@@ -376,12 +378,14 @@ public class Terminal {
             throw new IOException("Secure Element is not connected");
         }
 
-        Log.w(mTag, "Enable access control on basic channel for " + packageName);
-        ChannelAccess channelAccess;
-        try {
-            channelAccess = setUpChannelAccess(aid, packageName, pid);
-        } catch (MissingResourceException e) {
-            return null;
+        ChannelAccess channelAccess = null;
+        if (packageName != null) {
+            Log.w(mTag, "Enable access control on basic channel for " + packageName);
+            try {
+                channelAccess = setUpChannelAccess(aid, packageName, pid);
+            } catch (MissingResourceException e) {
+                return null;
+            }
         }
 
         synchronized (mLock) {
@@ -684,6 +688,9 @@ public class Terminal {
 
         if (isPrivilegedApplication(packageName)) {
             return ChannelAccess.getPrivilegeAccess(packageName, pid);
+        } else if (getName().startsWith(SecureElementService.UICC_TERMINAL)
+                && isCarrierPrivilegeApplication(packageName)) {
+            return ChannelAccess.getCarrierPrivilegeAccess(packageName, pid);
         }
 
         synchronized (mLock) {
@@ -741,6 +748,45 @@ public class Terminal {
 
     public Context getContext() {
         return mContext;
+    }
+
+    /**
+     * Checks if Carrier Privilege exists for the given package
+     */
+    private boolean isCarrierPrivilegeApplication(String packageName) {
+        try {
+            PackageManager pm = mContext.getPackageManager();
+            if (pm != null) {
+                PackageInfo pkgInfo = pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+                return checkCarrierPrivilegeRules(pkgInfo);
+            }
+        } catch (NameNotFoundException ne) { }
+        return false;
+    }
+
+    /**
+     * Checks if Carrier Privilege exists for the given package
+     */
+    public boolean checkCarrierPrivilegeRules(PackageInfo pInfo) {
+        boolean checkRefreshTag = true;
+        if (mAccessControlEnforcer == null || mAccessControlEnforcer.isNoRuleFound()) {
+            try {
+                initializeAccessControl();
+            } catch (IOException e) {
+                return false;
+            }
+            checkRefreshTag = false;
+        }
+        mAccessControlEnforcer.setPackageManager(mContext.getPackageManager());
+
+        synchronized (mLock) {
+            try {
+                return mAccessControlEnforcer.checkCarrierPrivilege(pInfo, checkRefreshTag);
+            } catch (Exception e) {
+                Log.i(mTag, "checkCarrierPrivilege() Exception: " + e.getMessage());
+                return false;
+            }
+        }
     }
 
     /** Dump data for debug purpose . */
