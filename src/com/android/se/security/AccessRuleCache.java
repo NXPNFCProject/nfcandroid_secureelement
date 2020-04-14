@@ -180,37 +180,26 @@ public class AccessRuleCache {
                 }
             }
 
-            // if new rule says APUD is denied then use it
-            // if current rule as undefined APDU rule then use setting of new rule.
-            // current APDU  new APDU    resulting APDU
-            // UNDEFINED     x           x
-            // ALLOWED       !DENIED     ALLOWED
-            // ALLOWED       DENIED      DENIED
-            // DENIED        !DENIED     DENIED
-            // DENEID        DENIED      DENIED
+            // Only the rule with the highest priority shall be applied if the rules conflict.
+            // APDU (NEVER) > APDU (Filter) > APDU (ALWAYS) > No APDU attribute
 
-            if ((channelAccess.getApduAccess() == ChannelAccess.ACCESS.DENIED)
-                    || (ca.getApduAccess() == ChannelAccess.ACCESS.DENIED)) {
-                ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-            } else if ((channelAccess.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                    && (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                ca.setApduAccess(ca.getApduAccess());
-            } else if ((channelAccess.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                    && (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                    && !channelAccess.isUseApduFilter()) {
-                ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-            } else if ((channelAccess.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)
-                    && (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED)) {
-                ca.setApduAccess(channelAccess.getApduAccess());
-            } else {
-                ca.setApduAccess(ChannelAccess.ACCESS.ALLOWED);
+            if (ca.getApduAccess() != ChannelAccess.ACCESS.DENIED) {
+                if (channelAccess.getApduAccess() == ChannelAccess.ACCESS.DENIED) {
+                    ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
+                } else if (ca.isUseApduFilter() || channelAccess.isUseApduFilter()) {
+                    // In order to differentiate APDU (Filter) from APDU (ALWAYS) clearly,
+                    // check if the combined rule will have APDU filter here
+                    // and avoid changing APDU access from UNDEFINED in APDU (Filter) case.
+                    // APDU filters combination itself will be done in the next process below.
+                } else if (channelAccess.getApduAccess() == ChannelAccess.ACCESS.ALLOWED) {
+                    ca.setApduAccess(ChannelAccess.ACCESS.ALLOWED);
+                }
             }
 
-            // put APDU filter together if resulting APDU access is allowed.
-            if ((ca.getApduAccess() == ChannelAccess.ACCESS.ALLOWED)
-                    || (ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED)) {
-                Log.i(mTag, "Merged Access Rule:  APDU filter together");
+            // put APDU filter together if resulting APDU access is not denied.
+            if (ca.getApduAccess() != ChannelAccess.ACCESS.DENIED) {
                 if (channelAccess.isUseApduFilter()) {
+                    Log.i(mTag, "Merged Access Rule:  APDU filter together");
                     ca.setUseApduFilter(true);
                     ApduFilter[] filter = ca.getApduFilter();
                     ApduFilter[] filter2 = channelAccess.getApduFilter();
