@@ -122,9 +122,9 @@ public class AccessRuleCache {
                             ? ChannelAccess.ACCESS.ALLOWED
                             : ChannelAccess.ACCESS.DENIED);
         } else {
-            // GP says that by default NFC should have the same right as for APDU access
-            channelAccess.setNFCEventAccess(channelAccess.getApduAccess());
+            // It is too early to interpret the missing NFC access rule attribute. Keep UNDEFINED.
         }
+
         return channelAccess;
     }
 
@@ -169,27 +169,17 @@ public class AccessRuleCache {
                 }
             }
 
-            // if new rule says NFC is denied then use it
-            // if current rule as undefined NFC rule then use setting of new rule.
-            // current NFC    new NFC     resulting NFC
-            // UNDEFINED      x           x
-            // ALLOWED        !DENIED     ALLOWED
-            // ALLOWED        DENIED      DENIED
-            // DENIED         !DENIED     DENIED
-            // DENIED         DENIED      DENIED
+            // Only the rule with the highest priority shall be applied if the rules conflict.
+            // NFC (NEVER) > NFC (ALWAYS) > No NFC attribute
 
-            if ((channelAccess.getNFCEventAccess() == ChannelAccess.ACCESS.DENIED)
-                    || (ca.getNFCEventAccess() == ChannelAccess.ACCESS.DENIED)) {
-                ca.setNFCEventAccess(ChannelAccess.ACCESS.DENIED);
-            } else if ((channelAccess.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)
-                    && (ca.getNFCEventAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
-                ca.setNFCEventAccess(ca.getNFCEventAccess());
-            } else if ((channelAccess.getNFCEventAccess() != ChannelAccess.ACCESS.UNDEFINED)
-                    && (ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED)) {
-                ca.setNFCEventAccess(channelAccess.getNFCEventAccess());
-            } else {
-                ca.setNFCEventAccess(ChannelAccess.ACCESS.ALLOWED);
+            if (ca.getNFCEventAccess() != ChannelAccess.ACCESS.DENIED) {
+                if (channelAccess.getNFCEventAccess() == ChannelAccess.ACCESS.DENIED) {
+                    ca.setNFCEventAccess(ChannelAccess.ACCESS.DENIED);
+                } else if (channelAccess.getNFCEventAccess() == ChannelAccess.ACCESS.ALLOWED) {
+                    ca.setNFCEventAccess(ChannelAccess.ACCESS.ALLOWED);
+                }
             }
+
             // if new rule says APUD is denied then use it
             // if current rule as undefined APDU rule then use setting of new rule.
             // current APDU  new APDU    resulting APDU
