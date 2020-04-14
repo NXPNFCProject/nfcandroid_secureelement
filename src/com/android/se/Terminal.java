@@ -216,7 +216,7 @@ public class Terminal {
             switch (message.what) {
                 case EVENT_GET_HAL:
                     try {
-                        initialize();
+                        initialize(true);
                     } catch (Exception e) {
                         Log.e(mTag, mName + " could not be initialized again");
                         sendMessageDelayed(obtainMessage(EVENT_GET_HAL, 0),
@@ -241,18 +241,19 @@ public class Terminal {
      * @throws NoSuchElementException if there is no HAL implementation for the specified SE name
      * @throws RemoteException if there is a failure communicating with the remote
      */
-    public void initialize() throws NoSuchElementException, RemoteException {
+    public void initialize(boolean retryOnFail) throws NoSuchElementException, RemoteException {
         synchronized (mLock) {
             android.hardware.secure_element.V1_1.ISecureElement seHal11 = null;
             try {
                 seHal11 =
-                        android.hardware.secure_element.V1_1.ISecureElement.getService(mName, true);
+                        android.hardware.secure_element.V1_1.ISecureElement.getService(mName,
+                                                                                       retryOnFail);
             } catch (Exception e) {
                 Log.d(mTag, "SE Hal V1.1 is not supported");
             }
 
             if (seHal11 == null) {
-                mSEHal = ISecureElement.getService(mName, true);
+                mSEHal = ISecureElement.getService(mName, retryOnFail);
                 if (mSEHal == null) {
                     throw new NoSuchElementException("No HAL is provided for " + mName);
                 }

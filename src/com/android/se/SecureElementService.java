@@ -183,7 +183,9 @@ public final class SecureElementService extends Service {
             do {
                 name = terminalName + Integer.toString(index);
                 Terminal terminal = new Terminal(name, this);
-                terminal.initialize();
+
+                // Only retry on fail for the first terminal of each type.
+                terminal.initialize(index == 1);
                 mTerminals.put(name, terminal);
             } while (++index > 0);
         } catch (NoSuchElementException e) {
