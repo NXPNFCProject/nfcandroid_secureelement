@@ -6,7 +6,8 @@
                  android:label="SecureElementApplication"
                  android:persistent="true"
                  android:directBootAware="true">
-        <service android:name=".SecureElementService">
+        <service android:name=".SecureElementService"
+                 android:visibleToInstantApps="true">
             <intent-filter>
                 <action android:name="android.se.omapi.ISecureElementService"/>
             </intent-filter>
