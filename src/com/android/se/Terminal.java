@@ -760,12 +760,14 @@ public class Terminal {
     private ChannelAccess setUpChannelAccess(byte[] aid, String packageName, int pid)
             throws IOException, MissingResourceException {
         boolean checkRefreshTag = true;
+        if (isPrivilegedApplication(packageName)) {
+            return ChannelAccess.getPrivilegeAccess(packageName, pid);
+        }
         // Attempt to initialize the access control enforcer if it failed
         // due to a kind of temporary failure or no rule was found in the previous attempt.
         // For privilege access, do not attempt to initialize the access control enforcer
         // if no rule was found in the previous attempt.
-        if (mAccessControlEnforcer == null || (!isPrivilegedApplication(packageName)
-                && mAccessControlEnforcer.isNoRuleFound())) {
+        if (mAccessControlEnforcer == null || mAccessControlEnforcer.isNoRuleFound()) {
             initializeAccessControl();
             // Just finished to initialize the access control enforcer.
             // It is too much to check the refresh tag in this case.
@@ -773,9 +775,7 @@ public class Terminal {
         }
         mAccessControlEnforcer.setPackageManager(mContext.getPackageManager());
 
-        if (isPrivilegedApplication(packageName)) {
-            return ChannelAccess.getPrivilegeAccess(packageName, pid);
-        } else if (getName().startsWith(SecureElementService.UICC_TERMINAL)
+        if (getName().startsWith(SecureElementService.UICC_TERMINAL)
                 && isCarrierPrivilegeApplication(packageName)) {
             return ChannelAccess.getCarrierPrivilegeAccess(packageName, pid);
         }
