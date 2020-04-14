@@ -134,7 +134,11 @@ public class Channel implements IBinder.DeathRecipient {
                 throw new SecurityException("MANAGE CHANNEL command not allowed");
             }
             if ((command[1] == (byte) 0xA4) && (command[2] == (byte) 0x04)) {
-                throw new SecurityException("SELECT by DF name command not allowed");
+                // SELECT by DF name is only allowed for CarrierPrivilege applications
+                // or system privilege applications
+                if (ChannelAccess.ACCESS.ALLOWED != mChannelAccess.getPrivilegeAccess()) {
+                    throw new SecurityException("SELECT by DF name command not allowed");
+                }
             }
         }
 

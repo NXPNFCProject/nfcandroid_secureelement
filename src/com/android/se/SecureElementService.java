@@ -288,9 +288,6 @@ public final class SecureElementService extends Service {
                 throw new IllegalStateException("Session is closed");
             } else if (listener == null) {
                 throw new NullPointerException("listener must not be null");
-            } else if (mReader.getTerminal().getName().startsWith(
-                    SecureElementService.UICC_TERMINAL)) {
-                return null;
             } else if ((p2 != 0x00) && (p2 != 0x04) && (p2 != 0x08)
                     && (p2 != (byte) 0x0C)) {
                 throw new UnsupportedOperationException("p2 not supported: "
