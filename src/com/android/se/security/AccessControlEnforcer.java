@@ -451,6 +451,35 @@ public class AccessControlEnforcer {
         }
     }
 
+    /** Returns true if the given package has Carrier Privileges */
+    public synchronized boolean checkCarrierPrivilege(PackageInfo pInfo, boolean checkRefreshTag) {
+        if (!mUseAra && !mUseArf) {
+            return false;
+        }
+        if (checkRefreshTag) {
+            try {
+                updateAccessRuleIfNeed();
+            } catch (IOException | MissingResourceException e) {
+                throw new AccessControlException("Access-Control not found in "
+                        + mTerminal.getName());
+            }
+        }
+        if (mRulesRead) {
+            return false;
+        }
+        try {
+            List<byte[]> appCertHashes = getAppCertHashes(pInfo.packageName);
+            if (appCertHashes == null || appCertHashes.size() == 0) {
+                return false;
+            }
+
+            return mAccessRuleCache.checkCarrierPrivilege(pInfo.packageName, appCertHashes);
+        } catch (Exception e) {
+            Log.w(mTag, " checkCarrierPrivilege: " + e.getLocalizedMessage());
+        }
+        return false;
+    }
+
     /** Debug information to be used by dumpsys */
     public void dump(PrintWriter writer) {
         writer.println(mTag + ":");
