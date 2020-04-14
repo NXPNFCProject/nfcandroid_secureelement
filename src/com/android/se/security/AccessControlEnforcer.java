@@ -84,7 +84,10 @@ public class AccessControlEnforcer {
         mAccessRuleCache = new AccessRuleCache();
     }
 
-    public static byte[] getDefaultAccessControlAid() {
+    public byte[] getDefaultAccessControlAid() {
+        if (mAraController != null) {
+            return mAraController.getAccessControlAid();
+        }
         return AraController.getAraMAid();
     }
 
@@ -454,6 +457,14 @@ public class AccessControlEnforcer {
 
         writer.println("mUseArf: " + mUseArf);
         writer.println("mUseAra: " + mUseAra);
+        if (mUseAra && mAraController != null) {
+            if (getDefaultAccessControlAid() == null) {
+                writer.println("AraInUse: default applet");
+            } else {
+                writer.println("AraInUse: " + ByteArrayConverter.byteArrayToHexString(
+                        getDefaultAccessControlAid()));
+            }
+        }
         writer.println("mInitialChannelAccess:");
         writer.println(mInitialChannelAccess.toString());
         writer.println();
