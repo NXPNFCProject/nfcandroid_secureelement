@@ -24,7 +24,7 @@
  *
  *  The original Work has been changed by NXP Semiconductors.
  *
- *  Copyright 2018-2019 NXP Semiconductors
+ *  Copyright 2018-2020 NXP Semiconductors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -130,13 +130,14 @@ public class Terminal {
     private static final int NFC_IN_USE = 3;
 
     private ISecureElement mSEHal;
+    private android.hardware.secure_element.V1_2.ISecureElement mSEHal12;
     private INxpEse mNxpEseHal;
 
     /** For each Terminal there will be one AccessController object. */
     private AccessControlEnforcer mAccessControlEnforcer;
 
-    private static final String SECURE_ELEMENT_PRIVILEGED_PERMISSION =
-            "android.permission.SECURE_ELEMENT_PRIVILEGED";
+    private static final String SECURE_ELEMENT_PRIVILEGED_OPERATION_PERMISSION =
+            "android.permission.SECURE_ELEMENT_PRIVILEGED_OPERATION";
 
     private ISecureElementHalCallback.Stub mHalCallback = new ISecureElementHalCallback.Stub() {
         @Override
@@ -247,25 +248,29 @@ public class Terminal {
      * @throws RemoteException if there is a failure communicating with the remote
      */
     public void initialize(boolean retryOnFail) throws NoSuchElementException, RemoteException {
+        android.hardware.secure_element.V1_1.ISecureElement mSEHal11 = null;
         synchronized (mLock) {
-            android.hardware.secure_element.V1_1.ISecureElement seHal11 = null;
             try {
-                seHal11 =
-                        android.hardware.secure_element.V1_1.ISecureElement.getService(mName,
-                                                                                       retryOnFail);
+                mSEHal = mSEHal11 = mSEHal12 = android.hardware.secure_element.V1_2.ISecureElement.getService(mName, retryOnFail);
             } catch (Exception e) {
-                Log.d(mTag, "SE Hal V1.1 is not supported");
+                Log.d(mTag, "SE Hal V1.2 is not supported");
             }
+            if (mSEHal12 == null) {
+                try {
+                    mSEHal = mSEHal11 = android.hardware.secure_element.V1_1.ISecureElement.getService(mName, retryOnFail);
+                } catch (Exception e) {
+                    Log.d(mTag, "SE Hal V1.1 is not supported");
+                }
 
-            if (seHal11 == null) {
-                mSEHal = ISecureElement.getService(mName, retryOnFail);
-                if (mSEHal == null) {
-                    throw new NoSuchElementException("No HAL is provided for " + mName);
+                if (mSEHal11 == null) {
+                    mSEHal = ISecureElement.getService(mName, retryOnFail);
+                    if (mSEHal == null) {
+                        throw new NoSuchElementException("No HAL is provided for " + mName);
+                    }
                 }
             }
-            if (seHal11 != null) {
-                mSEHal = seHal11;
-                seHal11.init_1_1(mHalCallback11);
+            if (mSEHal11 != null || mSEHal12 != null) {
+                mSEHal11.init_1_1(mHalCallback11);
             } else {
                 mSEHal.init(mHalCallback);
             }
@@ -755,6 +760,31 @@ public class Terminal {
     }
 
     /**
+     * Reset the Secure Element. Return true if success, false otherwise.
+     */
+    public boolean reset() {
+        if (mSEHal12 == null) {
+            return false;
+        }
+        mContext.enforceCallingOrSelfPermission(
+                android.Manifest.permission.SECURE_ELEMENT_PRIVILEGED_OPERATION,
+                "Need SECURE_ELEMENT_PRIVILEGED_OPERATION permission");
+
+        try {
+            byte status = mSEHal12.reset();
+            // Successfully trigger reset. HAL service should send onStateChange
+            // after secure element reset and initialization process complete
+            if (status == SecureElementStatus.SUCCESS) {
+                return true;
+            }
+            Log.e(mTag, "Error reseting terminal " + mName);
+        } catch (RemoteException e) {
+            Log.e(mTag, "Exception in reset()" + e);
+        }
+        return false;
+    }
+
+    /**
      * Initialize the Access Control and set up the channel access.
      */
     private ChannelAccess setUpChannelAccess(byte[] aid, String packageName, int pid)
@@ -823,7 +853,7 @@ public class Terminal {
     private boolean isPrivilegedApplication(String packageName) {
         PackageManager pm = mContext.getPackageManager();
         if (pm != null) {
-            return (pm.checkPermission(SECURE_ELEMENT_PRIVILEGED_PERMISSION,
+            return (pm.checkPermission(SECURE_ELEMENT_PRIVILEGED_OPERATION_PERMISSION,
                     packageName) == PackageManager.PERMISSION_GRANTED);
         }
         return false;
@@ -901,6 +931,7 @@ public class Terminal {
         if (mAccessControlEnforcer != null) {
             mAccessControlEnforcer.dump(writer);
         }
+
     }
 
     // Implementation of the SecureElement Reader interface according to OMAPI.
@@ -999,6 +1030,11 @@ public class Terminal {
 
         Terminal getTerminal() {
             return Terminal.this;
+        }
+
+        @Override
+        public boolean reset() {
+            return Terminal.this.reset();
         }
 
         private String getPublicKeySHA1(String pkg) {
