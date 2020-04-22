@@ -89,7 +89,6 @@ public class Terminal {
     private static final int EVENT_GET_HAL = 1;
 
     private ISecureElement mSEHal;
-    private android.hardware.secure_element.V1_2.ISecureElement mSEHal12;
 
     /** For each Terminal there will be one AccessController object. */
     private AccessControlEnforcer mAccessControlEnforcer;
@@ -189,31 +188,24 @@ public class Terminal {
      * @throws RemoteException if there is a failure communicating with the remote
      */
     public void initialize() throws NoSuchElementException, RemoteException {
-        android.hardware.secure_element.V1_1.ISecureElement mSEHal11 = null;
         synchronized (mLock) {
+            android.hardware.secure_element.V1_1.ISecureElement seHal11 = null;
             try {
-                mSEHal = mSEHal11 = mSEHal12 =
-                        android.hardware.secure_element.V1_2.ISecureElement.getService(mName, true);
+                seHal11 =
+                        android.hardware.secure_element.V1_1.ISecureElement.getService(mName, true);
             } catch (Exception e) {
-                Log.d(mTag, "SE Hal V1.2 is not supported");
-            }
-            if (mSEHal12 == null) {
-                try {
-                   mSEHal = mSEHal11 =
-                    android.hardware.secure_element.V1_1.ISecureElement.getService(mName,
-                      true);
-              } catch (Exception e) {
                 Log.d(mTag, "SE Hal V1.1 is not supported");
-              }
-              if (mSEHal11 == null) {
-                   mSEHal = ISecureElement.getService(mName, true);
-                   if (mSEHal == null) {
-                        throw new NoSuchElementException("No HAL is provided for " + mName);
-                    }
-              }
             }
-            if (mSEHal11 != null || mSEHal12 != null) {
-                mSEHal11.init_1_1(mHalCallback11);
+
+            if (seHal11 == null) {
+                mSEHal = ISecureElement.getService(mName, true);
+                if (mSEHal == null) {
+                    throw new NoSuchElementException("No HAL is provided for " + mName);
+                }
+            }
+            if (seHal11 != null) {
+                mSEHal = seHal11;
+                seHal11.init_1_1(mHalCallback11);
             } else {
                 mSEHal.init(mHalCallback);
             }
@@ -655,25 +647,21 @@ public class Terminal {
      * Reset the Secure Element. Return true if success, false otherwise.
      */
     public boolean reset() {
-        if (mSEHal12 == null) {
-            return false;
+      mContext.enforceCallingOrSelfPermission(
+          android.Manifest.permission.SECURE_ELEMENT_PRIVILEGED,
+          "Need SECURE_ELEMENT_PRIVILEGED permission");
+      try {
+        if(mHalCallback11 != null) {
+          // Clear ARA Rules
+          mHalCallback11.onStateChange_1_1(false,  "reset the SE");
+          //Close all Acquried channels and refresh ARA Rules
+          mHalCallback11.onStateChange_1_1(true,  "reset the SE");
+          return true;
         }
-        mContext.enforceCallingOrSelfPermission(
-                android.Manifest.permission.SECURE_ELEMENT_PRIVILEGED,
-                "Need SECURE_ELEMENT_PRIVILEGED permission");
-
-        try {
-            byte status = mSEHal12.reset();
-            // Successfully trigger reset. HAL service should send onStateChange
-            // after secure element reset and initialization process complete
-            if (status == SecureElementStatus.SUCCESS) {
-                return true;
-            }
-            Log.e(mTag, "Error reseting terminal " + mName);
-        } catch (RemoteException e) {
-            Log.e(mTag, "Exception in reset()" + e);
-        }
-        return false;
+      } catch (RemoteException re) {
+        re.printStackTrace();
+      }
+      return false;
     }
 
     /**
