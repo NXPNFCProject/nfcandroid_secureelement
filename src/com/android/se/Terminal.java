@@ -121,8 +121,8 @@ public class Terminal {
     private static final boolean DEBUG = Build.IS_DEBUGGABLE;
     private static final int GET_SERVICE_DELAY_MILLIS = 4 * 1000;
     private static final int EVENT_GET_HAL = 1;
-    private static final long HAL_ESE_IOCTL_OMAPI_TRY_GET_ESE_SESSION = 35;
-    private static final long HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION = 36;
+    private static final long HAL_ESE_IOCTL_OMAPI_TRY_GET_ESE_SESSION = 0xB7;
+    private static final long HAL_ESE_IOCTL_OMAPI_RELEASE_ESE_SESSION = 0xB8;
     /**
      * Error code used with ServiceSpecificException.
      * Thrown if RF is observed ON while opening connection to ESE over SPI.
