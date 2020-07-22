@@ -386,11 +386,13 @@ public class Terminal {
     /**
      * Cleans up all the channels in use.
      */
-    public synchronized void closeChannels() {
-        Collection<Channel> col = mChannels.values();
-        Channel[] channelList = col.toArray(new Channel[col.size()]);
-        for (Channel channel : channelList) {
-            channel.close();
+    public void closeChannels() {
+        synchronized (mLock) {
+            Collection<Channel> col = mChannels.values();
+            Channel[] channelList = col.toArray(new Channel[col.size()]);
+            for (Channel channel : channelList) {
+                channel.close();
+            }
         }
     }
 
@@ -1031,8 +1033,9 @@ public class Terminal {
                     }
                 }
             }
-            mSessions.remove(session);
+
             synchronized (mLock) {
+                mSessions.remove(session);
                 if (mSessions.size() == 0) {
                     mDefaultApplicationSelectedOnBasicChannel = true;
                 }
