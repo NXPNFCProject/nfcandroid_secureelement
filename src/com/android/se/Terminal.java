@@ -129,6 +129,9 @@ public class Terminal {
      */
     private static final int NFC_IN_USE = 3;
 
+    private final int mMaxGetHalRetryCount = 5;
+    private int mGetHalRetryCount = 0;
+
     private ISecureElement mSEHal;
     private android.hardware.secure_element.V1_2.ISecureElement mSEHal12;
     private INxpEse mNxpEseHal;
@@ -222,11 +225,20 @@ public class Terminal {
             switch (message.what) {
                 case EVENT_GET_HAL:
                     try {
-                        initialize(true);
+                        if (mName.startsWith(SecureElementService.ESE_TERMINAL)) {
+                            initialize(true);
+                        } else {
+                            initialize(false);
+                        }
                     } catch (Exception e) {
                         Log.e(mTag, mName + " could not be initialized again");
-                        sendMessageDelayed(obtainMessage(EVENT_GET_HAL, 0),
-                                GET_SERVICE_DELAY_MILLIS);
+                        if (mGetHalRetryCount < mMaxGetHalRetryCount) {
+                            mGetHalRetryCount++;
+                            sendMessageDelayed(obtainMessage(EVENT_GET_HAL, 0),
+                                    GET_SERVICE_DELAY_MILLIS);
+                        } else {
+                            Log.e(mTag, mName + " reach maximum retry count");
+                        }
                     }
                     break;
                 default:
