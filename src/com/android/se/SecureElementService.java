@@ -194,11 +194,15 @@ public final class SecureElementService extends Service {
     private void addTerminals(String terminalName) {
         int index = 1;
         String name = null;
+        if (terminalName.startsWith(SecureElementService.UICC_TERMINAL)) {
+            index = mActiveSimCount + 1;
+        }
         try {
             do {
                 name = terminalName + Integer.toString(index);
                 Terminal terminal = new Terminal(name, this);
 
+                Log.i(mTag, "Check if terminal " + name + " is available.");
                 // Only retry on fail for the first terminal of each type.
                 terminal.initialize(index == 1);
                 mTerminals.put(name, terminal);
@@ -220,7 +224,6 @@ public final class SecureElementService extends Service {
     }
 
     private void refreshUiccTerminals(int activeSimCount) {
-        int index = 1;
         String name = null;
         synchronized (this) {
             if (activeSimCount < mActiveSimCount) {
@@ -238,21 +241,7 @@ public final class SecureElementService extends Service {
                 mActiveSimCount = activeSimCount;
             } else if (activeSimCount > mActiveSimCount) {
                 // Try to initialize new UICC terminals
-                try {
-                    index = mActiveSimCount + 1;
-                    do {
-                        name = UICC_TERMINAL + Integer.toString(index);
-                        Log.i(mTag, "Check if terminal " + name + " is available.");
-                        Terminal terminal = new Terminal(name, this);
-                        terminal.initialize(true);
-                        mTerminals.put(name, terminal);
-                        mActiveSimCount = index;
-                    } while (++index <= activeSimCount);
-                } catch (NoSuchElementException e) {
-                    Log.i(mTag, "No HAL implementation for " + name);
-                } catch (RemoteException | RuntimeException e) {
-                    Log.e(mTag, "Error in getService() for " + name);
-                }
+                addTerminals(UICC_TERMINAL);
             }
         }
     }
