@@ -528,8 +528,6 @@ public class AccessControlEnforcer {
             }
         }
         if (!mTerminal.getName().startsWith(SecureElementService.UICC_TERMINAL)) {
-            // Deny full access for eSE if no rule can be retrieved because of security concern
-            mFullAccess = false;
             // ARF is supported only on UICC.
             mUseArf = false;
         }
