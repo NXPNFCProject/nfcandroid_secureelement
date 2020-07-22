@@ -473,7 +473,9 @@ public class Terminal {
                     mName,
                     packageName);
             try {
-                channelAccess = setUpChannelAccess(aid, packageName, pid);
+                // For application without privilege permission or carrier privilege,
+                // openBasicChannel with UICC terminals should be rejected.
+                channelAccess = setUpChannelAccess(aid, packageName, pid, true);
             } catch (MissingResourceException e) {
                 return null;
             }
@@ -560,7 +562,7 @@ public class Terminal {
                     mName,
                     packageName);
             try {
-                channelAccess = setUpChannelAccess(aid, packageName, pid);
+                channelAccess = setUpChannelAccess(aid, packageName, pid, false);
             } catch (MissingResourceException e) {
                 return null;
             }
@@ -787,8 +789,8 @@ public class Terminal {
     /**
      * Initialize the Access Control and set up the channel access.
      */
-    private ChannelAccess setUpChannelAccess(byte[] aid, String packageName, int pid)
-            throws IOException, MissingResourceException {
+    private ChannelAccess setUpChannelAccess(byte[] aid, String packageName, int pid,
+            boolean isBasicChannel) throws IOException, MissingResourceException {
         boolean checkRefreshTag = true;
         if (isPrivilegedApplication(packageName)) {
             return ChannelAccess.getPrivilegeAccess(packageName, pid);
@@ -811,16 +813,19 @@ public class Terminal {
                 if (pm != null) {
                     PackageInfo pkgInfo =
                             pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
-                    if (mAccessControlEnforcer.checkCarrierPrivilege(pkgInfo, checkRefreshTag)) {
+                    // Do not check the refresh tag for carrier privilege
+                    if (mAccessControlEnforcer.checkCarrierPrivilege(pkgInfo, false)) {
                         Log.i(mTag, "setUp PrivilegeAccess for CarrierPrivilegeApplication. ");
                         return ChannelAccess.getCarrierPrivilegeAccess(packageName, pid);
                     }
-                    checkRefreshTag = false;
                 }
             } catch (NameNotFoundException ne) {
                 Log.e(mTag, "checkCarrierPrivilege(): packageInfo is not found. ");
             } catch (Exception e) {
                 Log.e(mTag, "checkCarrierPrivilege() Exception: " + e.getMessage());
+            }
+            if (isBasicChannel) {
+                throw new MissingResourceException("openBasicChannel is not allowed.", "", "");
             }
         }
 
