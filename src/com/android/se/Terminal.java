@@ -297,14 +297,15 @@ public class Terminal {
     }
 
     /**
-     * This method is called in SecureElementService:onDestroy to clean up
-     * all open channels.
+     * Cleans up all the channels in use.
      */
-    public synchronized void closeChannels() {
-        Collection<Channel> col = mChannels.values();
-        Channel[] channelList = col.toArray(new Channel[col.size()]);
-        for (Channel channel : channelList) {
-            closeChannel(channel);
+    public void closeChannels() {
+        synchronized (mLock) {
+            Collection<Channel> col = mChannels.values();
+            Channel[] channelList = col.toArray(new Channel[col.size()]);
+            for (Channel channel : channelList) {
+                channel.close();
+            }
         }
     }
 
@@ -897,8 +898,9 @@ public class Terminal {
             if (session == null) {
                 throw new NullPointerException("session is null");
             }
-            mSessions.remove(session);
+
             synchronized (mLock) {
+                mSessions.remove(session);
                 if (mSessions.size() == 0) {
                     mDefaultApplicationSelectedOnBasicChannel = true;
                 }
