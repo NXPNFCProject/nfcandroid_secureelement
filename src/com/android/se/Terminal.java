@@ -51,6 +51,7 @@ import com.android.se.security.ChannelAccess;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -86,6 +87,26 @@ public class Terminal {
 
     private static final String SECURE_ELEMENT_PRIVILEGED_OPERATION_PERMISSION =
             "android.permission.SECURE_ELEMENT_PRIVILEGED_OPERATION";
+
+    public static final byte[] ISD_R_AID =
+            new byte[]{
+                    (byte) 0xA0,
+                    (byte) 0x00,
+                    (byte) 0x00,
+                    (byte) 0x05,
+                    (byte) 0x59,
+                    (byte) 0x10,
+                    (byte) 0x10,
+                    (byte) 0xFF,
+                    (byte) 0xFF,
+                    (byte) 0xFF,
+                    (byte) 0xFF,
+                    (byte) 0x89,
+                    (byte) 0x00,
+                    (byte) 0x00,
+                    (byte) 0x01,
+                    (byte) 0x00,
+            };
 
     private ISecureElementHalCallback.Stub mHalCallback = new ISecureElementHalCallback.Stub() {
         @Override
@@ -702,7 +723,9 @@ public class Terminal {
         }
         mAccessControlEnforcer.setPackageManager(mContext.getPackageManager());
 
-        if (getName().startsWith(SecureElementService.UICC_TERMINAL)) {
+        // Check carrier privilege when AID is not ISD-R
+        if (getName().startsWith(SecureElementService.UICC_TERMINAL)
+                && !Arrays.equals(aid, ISD_R_AID)) {
             try {
                 PackageManager pm = mContext.getPackageManager();
                 if (pm != null) {
