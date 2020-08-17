@@ -463,7 +463,7 @@ public class AccessControlEnforcer {
                         + mTerminal.getName());
             }
         }
-        if (mRulesRead) {
+        if (!mRulesRead) {
             return false;
         }
         try {
