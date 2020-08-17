@@ -688,9 +688,23 @@ public class Terminal {
         }
         mAccessControlEnforcer.setPackageManager(mContext.getPackageManager());
 
-        if (getName().startsWith(SecureElementService.UICC_TERMINAL)
-                && isCarrierPrivilegeApplication(packageName)) {
-            return ChannelAccess.getCarrierPrivilegeAccess(packageName, pid);
+        if (getName().startsWith(SecureElementService.UICC_TERMINAL)) {
+            try {
+                PackageManager pm = mContext.getPackageManager();
+                if (pm != null) {
+                    PackageInfo pkgInfo =
+                            pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+                    if (mAccessControlEnforcer.checkCarrierPrivilege(pkgInfo, checkRefreshTag)) {
+                        Log.i(mTag, "setUp PrivilegeAccess for CarrierPrivilegeApplication. ");
+                        return ChannelAccess.getCarrierPrivilegeAccess(packageName, pid);
+                    }
+                    checkRefreshTag = false;
+                }
+            } catch (NameNotFoundException ne) {
+                Log.e(mTag, "checkCarrierPrivilege(): packageInfo is not found. ");
+            } catch (Exception e) {
+                Log.e(mTag, "checkCarrierPrivilege() Exception: " + e.getMessage());
+            }
         }
 
         synchronized (mLock) {
@@ -748,20 +762,6 @@ public class Terminal {
 
     public Context getContext() {
         return mContext;
-    }
-
-    /**
-     * Checks if Carrier Privilege exists for the given package
-     */
-    private boolean isCarrierPrivilegeApplication(String packageName) {
-        try {
-            PackageManager pm = mContext.getPackageManager();
-            if (pm != null) {
-                PackageInfo pkgInfo = pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
-                return checkCarrierPrivilegeRules(pkgInfo);
-            }
-        } catch (NameNotFoundException ne) { }
-        return false;
     }
 
     /**
