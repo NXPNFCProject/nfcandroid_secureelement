@@ -309,7 +309,9 @@ public final class SecureElementService extends Service {
             Log.i(mTag, "Open basic channel success. Channel: "
                     + channel.getChannelNumber());
 
-            mChannels.add(channel);
+            synchronized (mLock) {
+                mChannels.add(channel);
+            }
             return channel.new SecureElementChannel();
         }
 
@@ -349,7 +351,9 @@ public final class SecureElementService extends Service {
             Log.i(mTag, "openLogicalChannel() Success. Channel: "
                     + channel.getChannelNumber());
 
-            mChannels.add(channel);
+            synchronized (mLock) {
+                mChannels.add(channel);
+            }
             return channel.new SecureElementChannel();
         }
     }
