@@ -59,7 +59,7 @@
 | android-10.0.0_r2              |  10.00.0F (SN110) |  NFC_AR_00_6000_10.00.0F_OpnSrc |
 | android-10.0.0_r2              |  10.00.14 (SN1xx) |  NFC_AR_00_6000_10.00.14_OpnSrc |
 | android-10.0.0_r2              |  10.00.15 (SN1xx) |  NFC_AR_00_6000_10.00.15_OpnSrc |
-
+| android-10.0.0_r2              |  10.00.17 (SN110) |  NFC_AR_00_6000_10.00.17_OpnSrc |
 
 #### Supported versions on "br_ar_p_sn1xx" branch
 | Android Version        | NXP Release          | NXP Tag  |
