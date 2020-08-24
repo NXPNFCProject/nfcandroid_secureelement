@@ -112,6 +112,7 @@ public class AccessControlEnforcer {
         // Destroy any previous Controler
         // in order to reset the ACE
         Log.i(mTag, "Reset the ACE for terminal:" + mTerminal.getName());
+        mAccessRuleCache.reset();
         mAraController = null;
         mArfController = null;
     }

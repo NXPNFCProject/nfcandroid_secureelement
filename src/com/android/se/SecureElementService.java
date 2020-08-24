@@ -214,7 +214,7 @@ public final class SecureElementService extends Service {
     }
 
     private void createTerminals() {
-        // Check for all eSE HAL implementations
+        // Check for all SE HAL implementations
         addTerminals(ESE_TERMINAL);
         addTerminals(UICC_TERMINAL);
     }

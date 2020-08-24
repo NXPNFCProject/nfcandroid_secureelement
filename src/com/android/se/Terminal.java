@@ -42,6 +42,7 @@ import android.se.omapi.ISecureElementReader;
 import android.se.omapi.ISecureElementSession;
 import android.se.omapi.SEService;
 import android.util.Log;
+import android.util.StatsLog;
 
 import com.android.se.SecureElementService.SecureElementSession;
 import com.android.se.internal.ByteArrayConverter;
@@ -72,7 +73,7 @@ public class Terminal {
     private Context mContext;
     private boolean mDefaultApplicationSelectedOnBasicChannel = true;
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = Build.IS_DEBUGGABLE;
     private static final int GET_SERVICE_DELAY_MILLIS = 4 * 1000;
     private static final int EVENT_GET_HAL = 1;
 
@@ -135,6 +136,11 @@ public class Terminal {
                 if (mAccessControlEnforcer != null) {
                     mAccessControlEnforcer.reset();
                 }
+                StatsLog.write(
+                        StatsLog.SE_STATE_CHANGED,
+                        StatsLog.SE_STATE_CHANGED__STATE__DISCONNECTED,
+                        reason,
+                        mName);
             } else {
                 // If any logical channel in use is in the channel list, it should be closed
                 // because the access control enfocer allowed to open it by checking the access
@@ -147,14 +153,24 @@ public class Terminal {
                     // ignore
                 }
                 mDefaultApplicationSelectedOnBasicChannel = true;
-             }
-         }
+                StatsLog.write(
+                        StatsLog.SE_STATE_CHANGED,
+                        StatsLog.SE_STATE_CHANGED__STATE__CONNECTED,
+                        reason,
+                        mName);
+            }
+        }
     }
 
     class SecureElementDeathRecipient implements HwBinder.DeathRecipient {
         @Override
         public void serviceDied(long cookie) {
             Log.e(mTag, mName + " died");
+            StatsLog.write(
+                    StatsLog.SE_STATE_CHANGED,
+                    StatsLog.SE_STATE_CHANGED__STATE__HALCRASH,
+                    "HALCRASH",
+                    mName);
             synchronized (mLock) {
                 mIsConnected = false;
                 if (mAccessControlEnforcer != null) {
@@ -242,6 +258,11 @@ public class Terminal {
             mSEHal.linkToDeath(mDeathRecipient, 0);
         }
         Log.i(mTag, mName + " was initialized");
+        StatsLog.write(
+                StatsLog.SE_STATE_CHANGED,
+                StatsLog.SE_STATE_CHANGED__STATE__INITIALIZED,
+                "INIT",
+                mName);
     }
 
     private ArrayList<Byte> byteArrayToArrayList(byte[] array) {
@@ -415,6 +436,11 @@ public class Terminal {
         ChannelAccess channelAccess = null;
         if (packageName != null) {
             Log.w(mTag, "Enable access control on basic channel for " + packageName);
+            StatsLog.write(
+                    StatsLog.SE_OMAPI_REPORTED,
+                    StatsLog.SE_OMAPI_REPORTED__OPERATION__OPEN_CHANNEL,
+                    mName,
+                    packageName);
             try {
                 // For application without privilege permission or carrier privilege,
                 // openBasicChannel with UICC terminals should be rejected.
@@ -499,6 +525,11 @@ public class Terminal {
         ChannelAccess channelAccess = null;
         if (packageName != null) {
             Log.w(mTag, "Enable access control on logical channel for " + packageName);
+            StatsLog.write(
+                    StatsLog.SE_OMAPI_REPORTED,
+                    StatsLog.SE_OMAPI_REPORTED__OPERATION__OPEN_CHANNEL,
+                    mName,
+                    packageName);
             try {
                 channelAccess = setUpChannelAccess(aid, packageName, pid, false);
             } catch (MissingResourceException | UnsupportedOperationException e) {
