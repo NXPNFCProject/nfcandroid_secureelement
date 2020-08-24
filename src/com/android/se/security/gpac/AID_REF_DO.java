@@ -105,9 +105,6 @@ public class AID_REF_DO extends BerTlv {
      */
     @Override
     public void interpret() throws ParserException {
-
-        mAid = null;
-
         byte[] data = getRawData();
         int index = getValueIndex();
 
