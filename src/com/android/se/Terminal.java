@@ -250,7 +250,7 @@ public class Terminal {
                     }
                 }
             }
-            if (mSEHal11 != null || mSEHal12 != null) {
+            if (mSEHal11 != null) {
                 mSEHal11.init_1_1(mHalCallback11);
             } else {
                 mSEHal.init(mHalCallback);
