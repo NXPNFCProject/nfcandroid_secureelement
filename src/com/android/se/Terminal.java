@@ -302,10 +302,10 @@ public class Terminal {
                     }
                 }
             }
-            if (mSEHal11 != null || mSEHal12 != null) {
-                mSEHal11.init_1_1(mHalCallback11);
+            if (mSEHal11 != null) {
+              mSEHal11.init_1_1(mHalCallback11);
             } else {
-                mSEHal.init(mHalCallback);
+              mSEHal.init(mHalCallback);
             }
             mSEHal.linkToDeath(mDeathRecipient, 0);
 
