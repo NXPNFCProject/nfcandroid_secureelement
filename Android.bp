@@ -1,6 +1,17 @@
+genrule {
+    name: "statslog-secure-element-java-gen",
+    tools: ["stats-log-api-gen"],
+    cmd: "$(location stats-log-api-gen) --java $(out) --module secure_element"
+        + " --javaPackage com.android.se --javaClass SecureElementStatsLog",
+    out: ["com/android/se/SecureElementStatsLog.java"],
+}
+
 android_app {
     name: "SecureElement",
-    srcs: ["src/**/*.java"],
+    srcs: [
+        "src/**/*.java",
+        ":statslog-secure-element-java-gen",
+    ],
     platform_apis: true,
     certificate: "platform",
     static_libs: ["android.hardware.secure_element-V1.0-java",
