@@ -36,12 +36,13 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 *
-*  Copyright 2020 NXP
+*  Copyright 2021 NXP
 *
 ******************************************************************************/
 package com.android.se;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -55,6 +56,7 @@ import android.os.HwBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceSpecificException;
+import android.os.UserHandle;
 import android.se.omapi.ISecureElementListener;
 import android.se.omapi.ISecureElementReader;
 import android.se.omapi.ISecureElementSession;
@@ -176,8 +178,18 @@ public class Terminal {
                         reason,
                         mName);
             }
+
+            sendStateChangedBroadcast(state);
         }
     }
+
+    private void sendStateChangedBroadcast(boolean state) {
+        Intent intent = new Intent(SEService.ACTION_SECURE_ELEMENT_STATE_CHANGED);
+        intent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+        intent.putExtra(SEService.EXTRA_READER_NAME, mName);
+        intent.putExtra(SEService.EXTRA_READER_STATE, state);
+        mContext.sendBroadcastAsUser(intent, UserHandle.CURRENT);
+    };
 
     class SecureElementDeathRecipient implements HwBinder.DeathRecipient {
         @Override
