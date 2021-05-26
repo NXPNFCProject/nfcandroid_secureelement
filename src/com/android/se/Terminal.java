@@ -759,11 +759,16 @@ public class Terminal {
      */
     public boolean[] isNfcEventAllowed(PackageManager packageManager, byte[] aid,
             String[] packageNames) {
+        if (!mIsConnected) {
+            // Return if not connected
+            return null;
+        }
         // Attempt to initialize the access control enforcer if it failed in the previous attempt
         // due to a kind of temporary failure or no rule was found.
         if (mAccessControlEnforcer == null || mAccessControlEnforcer.isNoRuleFound()) {
             try {
                 initializeAccessControl();
+                Log.i(mTag, "AccessControlEnforcer initialized");
                 // Just finished to initialize the access control enforcer.
                 // It is too much to check the refresh tag in this case.
             } catch (Exception e) {
