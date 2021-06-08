@@ -8,7 +8,8 @@
     <application android:name=".SEApplication"
          android:label="SecureElementApplication"
          android:persistent="true"
-         android:directBootAware="true">
+         android:directBootAware="true"
+         android:memtagMode="async">
         <service android:name=".SecureElementService"
              android:visibleToInstantApps="true"
              android:exported="true">
