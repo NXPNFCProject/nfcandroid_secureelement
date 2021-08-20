@@ -739,23 +739,25 @@ public class Terminal {
      * Reset the Secure Element. Return true if success, false otherwise.
      */
     public boolean reset() {
-        if (mSEHal12 == null) {
-            return false;
-        }
-        mContext.enforceCallingOrSelfPermission(
+        synchronized (mLock) {
+            if (mSEHal12 == null) {
+                return false;
+            }
+            mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.SECURE_ELEMENT_PRIVILEGED_OPERATION,
                 "Need SECURE_ELEMENT_PRIVILEGED_OPERATION permission");
 
-        try {
-            byte status = mSEHal12.reset();
-            // Successfully trigger reset. HAL service should send onStateChange
-            // after secure element reset and initialization process complete
-            if (status == SecureElementStatus.SUCCESS) {
-                return true;
+            try {
+                byte status = mSEHal12.reset();
+                // Successfully trigger reset. HAL service should send onStateChange
+                // after secure element reset and initialization process complete
+                if (status == SecureElementStatus.SUCCESS) {
+                    return true;
+                }
+                Log.e(mTag, "Error reseting terminal " + mName);
+            } catch (RemoteException e) {
+                Log.e(mTag, "Exception in reset()" + e);
             }
-            Log.e(mTag, "Error reseting terminal " + mName);
-        } catch (RemoteException e) {
-            Log.e(mTag, "Exception in reset()" + e);
         }
         return false;
     }
