@@ -74,6 +74,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Vector;
 
 /**
  * Underlying implementation for OMAPI SEService
@@ -93,14 +94,49 @@ public final class SecureElementService extends Service {
 
         @Override
         public String[] getReaders() throws RemoteException {
-            return mTerminals.keySet().toArray(new String[mTerminals.size()]);
+            try {
+                // This determines calling process is application/framework
+                String packageName = getPackageNameFromCallingUid(Binder.getCallingUid());
+                Log.d(mTag, "getReaders() for " + packageName);
+                return mTerminals.keySet().toArray(new String[mTerminals.size()]);
+            } catch (AccessControlException e) {
+                // since packagename not found, UUID might be used to access
+                // allow only to use eSE readers with UUID based requests
+                Vector<String> eSEReaders = new Vector<String>();
+                for (String reader : mTerminals.keySet()) {
+                    if (reader.startsWith(SecureElementService.ESE_TERMINAL)) {
+                        Log.i(mTag, "Adding Reader: " + reader);
+                        eSEReaders.add(reader);
+                    }
+                }
+
+                return eSEReaders.toArray(new String[eSEReaders.size()]);
+            }
         }
 
         @Override
         public ISecureElementReader getReader(String reader) throws RemoteException {
             Log.d(mTag, "getReader() " + reader);
-            Terminal terminal = getTerminal(reader);
-            return terminal.new SecureElementReader(SecureElementService.this);
+            Terminal terminal = null;
+            try {
+                // This determines calling process is application/framework
+                String packageName = getPackageNameFromCallingUid(Binder.getCallingUid());
+                Log.d(mTag, "getReader() for " + packageName);
+                terminal = getTerminal(reader);
+            } catch (AccessControlException e) {
+                // since packagename not found, UUID might be used to access
+                // allow only to use eSE readers with UUID based requests
+                if (reader.startsWith(SecureElementService.ESE_TERMINAL)) {
+                    terminal = getTerminal(reader);
+                } else {
+                    Log.d(mTag, "only eSE readers can access SE using UUID");
+                }
+            }
+            if (terminal != null) {
+                return terminal.new SecureElementReader(SecureElementService.this);
+            } else {
+                throw new IllegalArgumentException("Reader: " + reader + " not supported");
+            }
         }
 
         @Override
@@ -367,7 +403,10 @@ public final class SecureElementService extends Service {
                 // provided by vendors for the calling process UID
                 // (vendor provide UUID mapping for native services to access secure element)
                 Log.d(mTag, "openBasicChannel() trying to find mapping uuid");
-                uuid = getUUIDFromCallingUid(Binder.getCallingUid());
+                // Allow UUID based access only on embedded secure elements eSE.
+                if (mReader.getTerminal().getName().startsWith(SecureElementService.ESE_TERMINAL)) {
+                    uuid = getUUIDFromCallingUid(Binder.getCallingUid());
+                }
                 if (uuid == null) {
                     Log.e(mTag, "openBasicChannel() uuid mapping for calling uid is not found");
                     throw e;
@@ -423,7 +462,10 @@ public final class SecureElementService extends Service {
                 // provided by vendors for the calling process UID
                 // (vendor provide UUID mapping for native services to access secure element)
                 Log.d(mTag, "openLogicalChannel() trying to find mapping uuid");
-                uuid = getUUIDFromCallingUid(Binder.getCallingUid());
+                // Allow UUID based access only on embedded secure elements eSE.
+                if (mReader.getTerminal().getName().startsWith(SecureElementService.ESE_TERMINAL)) {
+                    uuid = getUUIDFromCallingUid(Binder.getCallingUid());
+                }
                 if (uuid == null) {
                     Log.e(mTag, "openLogicalChannel() uuid mapping for calling uid is not found");
                     throw e;
