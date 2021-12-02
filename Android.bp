@@ -12,9 +12,6 @@ android_app {
         "src/**/*.java",
         ":statslog-secure-element-java-gen",
     ],
-    vintf_fragments: [
-        "secure_element-service.xml",
-    ],
     platform_apis: true,
     certificate: "platform",
     static_libs: ["android.hardware.secure_element-V1.0-java",
