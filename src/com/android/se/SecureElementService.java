@@ -153,9 +153,16 @@ public final class SecureElementService extends Service {
                 throw new IllegalArgumentException("package names not specified");
             }
             Terminal terminal = getTerminal(reader);
-            return terminal.isNfcEventAllowed(
-                    createContextAsUser(UserHandle.of(userId), /*flags=*/0)
-                    .getPackageManager(), aid, packageNames);
+            Context context;
+            try {
+                context = createContextAsUser(UserHandle.of(userId), /*flags=*/0);
+            } catch (IllegalStateException e) {
+                context = null;
+                Log.d(mTag, "fail to call createContextAsUser for userId:" + userId);
+            }
+            return context == null ? null : terminal.isNfcEventAllowed(
+                    context.getPackageManager(), aid, packageNames);
+
         }
 
         @Override
