@@ -41,7 +41,6 @@
 
 package com.android.se;
 
-import android.app.ActivityManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -105,9 +104,8 @@ public final class SecureElementService extends Service {
                 }
 
                 @Override
-                public synchronized boolean[] isNFCEventAllowed(String reader, byte[] aid,
-                        String[] packageNames)
-                        throws RemoteException {
+                public synchronized boolean[] isNfcEventAllowed(String reader, byte[] aid,
+                        String[] packageNames, int userId) throws RemoteException {
                     if (aid == null || aid.length == 0) {
                         aid = new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
                     }
@@ -119,10 +117,9 @@ public final class SecureElementService extends Service {
                     }
                     try {
                       Terminal terminal = getTerminal(reader);
-                      UserHandle currentUser = new UserHandle(ActivityManager.getCurrentUser());
                       return terminal.isNfcEventAllowed(
-                          createContextAsUser(currentUser, /*flags=*/0).getPackageManager(), aid,
-                          packageNames);
+                    createContextAsUser(UserHandle.of(userId), /*flags=*/0)
+                    .getPackageManager(), aid, packageNames);
                     } catch (IllegalArgumentException e) {
                         return null;
                     }
