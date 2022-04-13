@@ -225,7 +225,11 @@ public final class SecureElementService extends Service {
         initialize();
         createTerminals();
 
-        ServiceManager.addService(VSTABLE_SECURE_ELEMENT_SERVICE, mSecureElementServiceBinderVntf);
+        // Add vendor stable service only if it is configured
+        if (getResources().getBoolean(R.bool.secure_element_vintf_enabled)) {
+            ServiceManager.addService(VSTABLE_SECURE_ELEMENT_SERVICE,
+                    mSecureElementServiceBinderVntf);
+        }
 
         // Since ISecureElementService is marked with VINTF stability
         // to use this same interface within the system partition, will use
