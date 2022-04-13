@@ -82,63 +82,69 @@ public final class SecureElementService extends Service {
 
     public static final String UICC_TERMINAL = "SIM";
     public static final String ESE_TERMINAL = "eSE";
+    public static final String VSTABLE_SECURE_ELEMENT_SERVICE =
+        "android.se.omapi.ISecureElementService/default";
     private final String mTag = "SecureElementService";
     private static final boolean DEBUG = Build.IS_DEBUGGABLE;
     // LinkedHashMap will maintain the order of insertion
     private LinkedHashMap<String, Terminal> mTerminals = new LinkedHashMap<String, Terminal>();
     private int mActiveSimCount = 0;
+    private class SecureElementServiceBinder extends ISecureElementService.Stub {
+
+        @Override
+        public String[] getReaders() throws RemoteException {
+            return mTerminals.keySet().toArray(new String[mTerminals.size()]);
+        }
+
+        @Override
+        public ISecureElementReader getReader(String reader) throws RemoteException {
+            Log.d(mTag, "getReader() " + reader);
+            Terminal terminal = getTerminal(reader);
+            return terminal.new SecureElementReader(SecureElementService.this);
+        }
+
+        @Override
+        public synchronized boolean[] isNfcEventAllowed(String reader, byte[] aid,
+                String[] packageNames, int userId) throws RemoteException {
+            if (aid == null || aid.length == 0) {
+                aid = new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
+            }
+            if (aid.length < 5 || aid.length > 16) {
+                throw new IllegalArgumentException("AID out of range");
+            }
+            if (packageNames == null || packageNames.length == 0) {
+                throw new IllegalArgumentException("package names not specified");
+            }
+            try {
+              Terminal terminal = getTerminal(reader);
+              Context context;
+              try {
+                  context = createContextAsUser(UserHandle.of(userId), /*flags=*/0);
+              } catch (IllegalStateException e) {
+                  context = null;
+                  Log.d(mTag, "fail to call createContextAsUser for userId:" + userId);
+              }
+              return context == null ? null : terminal.isNfcEventAllowed(
+                      context.getPackageManager(), aid, packageNames);
+
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+
+        @Override
+        protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+            for (Terminal terminal : mTerminals.values()) {
+                terminal.dump(writer);
+            }
+        }
+    };
+
     private final ISecureElementService.Stub mSecureElementServiceBinder =
-            new ISecureElementService.Stub() {
+            new SecureElementServiceBinder();
 
-                @Override
-                public String[] getReaders() throws RemoteException {
-                    return mTerminals.keySet().toArray(new String[mTerminals.size()]);
-                }
-
-                @Override
-                public ISecureElementReader getReader(String reader)
-                        throws RemoteException {
-                    Log.d(mTag, "getReader() " + reader);
-                    Terminal terminal = getTerminal(reader);
-                    return terminal.new SecureElementReader(SecureElementService.this);
-                }
-
-                @Override
-                public synchronized boolean[] isNfcEventAllowed(String reader, byte[] aid,
-                        String[] packageNames, int userId) throws RemoteException {
-                    if (aid == null || aid.length == 0) {
-                        aid = new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
-                    }
-                    if (aid.length < 5 || aid.length > 16) {
-                        throw new IllegalArgumentException("AID out of range");
-                    }
-                    if (packageNames == null || packageNames.length == 0) {
-                        throw new IllegalArgumentException("package names not specified");
-                    }
-                    try {
-                      Terminal terminal = getTerminal(reader);
-                      Context context;
-                      try {
-                          context = createContextAsUser(UserHandle.of(userId), /*flags=*/0);
-                      } catch (IllegalStateException e) {
-                          context = null;
-                          Log.d(mTag, "fail to call createContextAsUser for userId:" + userId);
-                      }
-                      return context == null ? null : terminal.isNfcEventAllowed(
-                              context.getPackageManager(), aid, packageNames);
-
-                    } catch (IllegalArgumentException e) {
-                        return null;
-                    }
-                }
-
-                @Override
-                protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
-                    for (Terminal terminal : mTerminals.values()) {
-                        terminal.dump(writer);
-                    }
-                }
-            };
+    private final ISecureElementService.Stub mSecureElementServiceBinderVntf =
+            new SecureElementServiceBinder();
 
     public SecureElementService() {
         super();
@@ -181,6 +187,13 @@ public final class SecureElementService extends Service {
         Log.i(mTag, Thread.currentThread().getName() + " onCreate");
         initialize();
         createTerminals();
+
+        ServiceManager.addService(VSTABLE_SECURE_ELEMENT_SERVICE, mSecureElementServiceBinderVntf);
+
+        // Since ISecureElementService is marked with VINTF stability
+        // to use this same interface within the system partition, will use
+        // forceDowngradeToSystemStability and register it.
+        mSecureElementServiceBinder.forceDowngradeToSystemStability();
         ServiceManager.addService(Context.SECURE_ELEMENT_SERVICE, mSecureElementServiceBinder);
     }
 
