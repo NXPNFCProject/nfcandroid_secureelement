@@ -35,7 +35,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *  Copyright 2019 NXP
+ *  Copyright 2019,2022 NXP
  *
  ******************************************************************************/
 
@@ -152,21 +152,17 @@ public final class SecureElementService extends Service {
             if (packageNames == null || packageNames.length == 0) {
                 throw new IllegalArgumentException("package names not specified");
             }
+            Terminal terminal = getTerminal(reader);
+            Context context;
             try {
-              Terminal terminal = getTerminal(reader);
-              Context context;
-              try {
-                  context = createContextAsUser(UserHandle.of(userId), /*flags=*/0);
-              } catch (IllegalStateException e) {
-                  context = null;
-                  Log.d(mTag, "fail to call createContextAsUser for userId:" + userId);
-              }
-              return context == null ? null : terminal.isNfcEventAllowed(
-                      context.getPackageManager(), aid, packageNames);
-
-            } catch (IllegalArgumentException e) {
-                return null;
+              context = createContextAsUser(UserHandle.of(userId), /*flags=*/0);
+            } catch (IllegalStateException e) {
+              context = null;
+              Log.d(mTag, "fail to call createContextAsUser for userId:" + userId);
             }
+            return context == null ? null : terminal.isNfcEventAllowed(
+                  context.getPackageManager(), aid, packageNames);
+
         }
 
         @Override
