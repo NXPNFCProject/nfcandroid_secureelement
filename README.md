@@ -18,7 +18,15 @@
 | android-12.0.0_r2              |  12.0D.00 (SN100/SN110/PN557) |  NFC_AR_00_E800_12.0D.00_OpnSrc |
 | android-12.0.0_r2              |  12.10.00 (SN100/SN110/SN220) |  NFC_AR_00_E800_12.10.00_OpnSrc |
 | android-12.0.0_r2              |  12.12.00 (PN557/SN100/SN110/SN220) |  NFC_AR_00_E800_12.12.00_OpnSrc |
-| android-12.0.0_r2              |  12.14.00 (PN557/PN560/SN100/SN110/SN220) |  NFC_AR_00_E800_12.14.00_OpnSrc |#### Supported Version on "br_android_ncihalx_11" branch
+| android-12.0.0_r2              |  12.14.00 (PN557/PN560/SN100/SN110/SN220) |  NFC_AR_00_1E800_12.14.00_OpnSrc |
+
+
+
+
+
+
+
+#### Supported Version on "br_android_ncihalx_11" branch
 | Android Version        | NXP Release          | NXP Tag  |
 | :-------------: |:---------------------:| :-----:|
 | aosp-master           |  11.01.00 (SN110) |  NFC_AR_00_6000_11.01.00_OpnSrc |
