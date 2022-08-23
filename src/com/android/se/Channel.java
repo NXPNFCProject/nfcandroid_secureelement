@@ -349,5 +349,15 @@ public class Channel implements IBinder.DeathRecipient {
                 throw new ServiceSpecificException(SEService.IO_ERROR, e.getMessage());
             }
         }
+
+        @Override
+        public String getInterfaceHash() {
+            return ISecureElementChannel.HASH;
+        }
+
+        @Override
+        public int getInterfaceVersion() {
+            return ISecureElementChannel.VERSION;
+        }
     }
 }

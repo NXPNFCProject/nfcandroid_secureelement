@@ -171,6 +171,16 @@ public final class SecureElementService extends Service {
                 terminal.dump(writer);
             }
         }
+
+        @Override
+        public String getInterfaceHash() {
+            return ISecureElementService.HASH;
+        }
+
+        @Override
+        public int getInterfaceVersion() {
+            return ISecureElementService.VERSION;
+        }
     }
 
     private final ISecureElementService.Stub mSecureElementServiceBinder =
@@ -507,6 +517,16 @@ public final class SecureElementService extends Service {
                 mChannels.add(channel);
             }
             return channel.new SecureElementChannel();
+        }
+
+        @Override
+        public String getInterfaceHash() {
+            return ISecureElementSession.HASH;
+        }
+
+        @Override
+        public int getInterfaceVersion() {
+            return ISecureElementSession.VERSION;
         }
     }
 
