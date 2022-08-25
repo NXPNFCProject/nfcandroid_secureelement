@@ -1121,6 +1121,16 @@ public class Terminal {
             return Terminal.this.reset();
         }
 
+        @Override
+        public String getInterfaceHash() {
+            return ISecureElementReader.HASH;
+        }
+
+        @Override
+        public int getInterfaceVersion() {
+            return ISecureElementReader.VERSION;
+        }
+
         private String getPublicKeySHA1(String pkg) {
             PackageManager pm = mContext.getPackageManager();
             PackageInfo packageInfo = null;
