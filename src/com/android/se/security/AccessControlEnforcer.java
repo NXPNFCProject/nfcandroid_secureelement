@@ -65,7 +65,7 @@ import java.util.NoSuchElementException;
 public class AccessControlEnforcer {
 
     private final String mTag = "SecureElement-AccessControlEnforcer";
-    private static final boolean DEBUG = Build.IS_DEBUGGABLE;
+    private static final boolean DEBUG = Build.isDebuggable();
     private PackageManager mPackageManager = null;
     private boolean mNoRuleFound = false;
     private AraController mAraController = null;
@@ -512,7 +512,7 @@ public class AccessControlEnforcer {
     }
 
     private void readSecurityProfile() {
-        if (!Build.IS_DEBUGGABLE) {
+        if (!Build.isDebuggable()) {
             mUseArf = true;
             mUseAra = true;
             mFullAccess = false; // Per default we don't grant full access.

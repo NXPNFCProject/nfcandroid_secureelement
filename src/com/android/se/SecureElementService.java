@@ -87,7 +87,7 @@ public final class SecureElementService extends Service {
     public static final String VSTABLE_SECURE_ELEMENT_SERVICE =
             "android.se.omapi.ISecureElementService/default";
     private final String mTag = "SecureElementService";
-    private static final boolean DEBUG = Build.IS_DEBUGGABLE;
+    private static final boolean DEBUG = Build.isDebuggable();
     // LinkedHashMap will maintain the order of insertion
     private LinkedHashMap<String, Terminal> mTerminals = new LinkedHashMap<String, Terminal>();
     private int mActiveSimCount = 0;
