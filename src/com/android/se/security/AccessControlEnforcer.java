@@ -277,7 +277,7 @@ public class AccessControlEnforcer {
         // check result of channel access during initialization procedure
         if (mInitialChannelAccess.getAccess() == ChannelAccess.ACCESS.DENIED) {
             throw new AccessControlException(
-                    mTag + "access denied: " + mInitialChannelAccess.getReason());
+                    mTag + " access denied: " + mInitialChannelAccess.getReason());
         }
         // this is the new GP Access Control Enforcer implementation
         if (mUseAra || mUseArf) {
