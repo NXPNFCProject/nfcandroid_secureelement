@@ -36,7 +36,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 *
-*  Copyright 2021 NXP
+*  Copyright 2021, 2023 NXP
 *
 ******************************************************************************/
 package com.android.se;
@@ -688,7 +688,7 @@ public class Terminal {
                 try {
                     responseArray[0] = new LogicalChannelResponse();
                     android.hardware.secure_element.LogicalChannelResponse aidlRs =
-                            mAidlHal.openLogicalChannel(aid, p2);
+                            mAidlHal.openLogicalChannel(aid == null ? new byte[0] : aid, p2);
                     responseArray[0].channelNumber = aidlRs.channelNumber;
                     responseArray[0].selectResponse = byteArrayToArrayList(aidlRs.selectResponse);
                 } catch (RemoteException e) {
@@ -730,7 +730,6 @@ public class Terminal {
             Channel logicalChannel = new Channel(session, this, channelNumber,
                     selectResponse, aid, listener);
             logicalChannel.setChannelAccess(channelAccess);
-
             mChannels.put(channelNumber, logicalChannel);
             return logicalChannel;
         }
