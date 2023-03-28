@@ -54,6 +54,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HwBinder;
+import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -289,9 +290,16 @@ public class Terminal {
         android.hardware.secure_element.V1_1.ISecureElement mSEHal11 = null;
         synchronized (mLock) {
             try {
-                mAidlHal = android.hardware.secure_element.ISecureElement.Stub.asInterface(
-                        ServiceManager.waitForDeclaredService(
-                            "android.hardware.secure_element.ISecureElement/" + mName));
+                String name = "android.hardware.secure_element.ISecureElement/" + mName;
+                IBinder binder = null;
+                if (retryOnFail) {
+                    binder = ServiceManager.waitForDeclaredService(name);
+                } else {
+                    if (ServiceManager.isDeclared(name)) {
+                        binder = ServiceManager.getService(name);
+                    }
+                }
+                mAidlHal = android.hardware.secure_element.ISecureElement.Stub.asInterface(binder);
             } catch (Exception e) {
                 Log.d(mTag, "SE AIDL Hal is not supported");
             }
