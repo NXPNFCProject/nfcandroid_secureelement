@@ -929,7 +929,7 @@ public class Terminal {
                     if (status == SecureElementStatus.SUCCESS) {
                         return true;
                     }
-                    Log.e(mTag, "Error reseting terminal " + mName);
+                    Log.e(mTag, "Error resetting terminal " + mName);
                 }
             } catch (ServiceSpecificException e) {
                 Log.e(mTag, "Exception in reset()" + e);
