@@ -18,7 +18,7 @@ android_test {
         "androidx.test.rules",
         "androidx.test.ext.junit",
         "mockito-target",
-        "truth-prebuilt",
+        "truth",
     ],
 
     // Include all test java files.
