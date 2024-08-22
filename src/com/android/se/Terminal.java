@@ -894,8 +894,10 @@ public class Terminal {
         try {
             if (mAidlHal != null) {
                 return mAidlHal.isCardPresent();
-            } else {
+            } else if (mSEHal != null) {
                 return mSEHal.isCardPresent();
+            } else {
+                return false;
             }
         } catch (ServiceSpecificException e) {
             Log.e(mTag, "Error in isSecureElementPresent() " + e);
