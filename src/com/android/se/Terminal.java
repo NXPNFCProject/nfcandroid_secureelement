@@ -20,25 +20,7 @@
 /*
  * Contributed by: Giesecke & Devrient GmbH.
  */
-/******************************************************************************
-*
-*  The original Work has been changed by NXP.
-*
-*  Licensed under the Apache License, Version 2.0 (the "License");
-*  you may not use this file except in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*  http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software
-*  distributed under the License is distributed on an "AS IS" BASIS,
-*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*  See the License for the specific language governing permissions and
-*  limitations under the License.
-*
-*  Copyright 2021, 2023 NXP
-*
-******************************************************************************/
+
 package com.android.se;
 
 import android.content.Context;
@@ -95,7 +77,7 @@ public class Terminal {
     private Context mContext;
     private boolean mDefaultApplicationSelectedOnBasicChannel = true;
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = Build.isDebuggable();
     private static final int GET_SERVICE_DELAY_MILLIS = 4 * 1000;
     private static final int EVENT_GET_HAL = 1;
 
@@ -766,8 +748,9 @@ public class Terminal {
                     return false;
                 }
                 return true;
+            } else if (mSEHal == null) {
+                return false;
             }
-
             LogicalChannelResponse[] responseArray = new LogicalChannelResponse[1];
             byte[] status = new byte[1];
             try {
@@ -894,8 +877,10 @@ public class Terminal {
         try {
             if (mAidlHal != null) {
                 return mAidlHal.isCardPresent();
-            } else {
+            } else if (mSEHal != null) {
                 return mSEHal.isCardPresent();
+            } else {
+                return false;
             }
         } catch (ServiceSpecificException e) {
             Log.e(mTag, "Error in isSecureElementPresent() " + e);
