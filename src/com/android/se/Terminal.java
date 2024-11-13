@@ -80,6 +80,7 @@ public class Terminal {
     private static final boolean DEBUG = Build.isDebuggable();
     private static final int GET_SERVICE_DELAY_MILLIS = 4 * 1000;
     private static final int EVENT_GET_HAL = 1;
+    private static final int EVENT_NOTIFY_STATE_CHANGE = 2;
 
     private final int mMaxGetHalRetryCount = 5;
     private int mGetHalRetryCount = 0;
@@ -183,7 +184,7 @@ public class Terminal {
                         mName);
             }
 
-            sendStateChangedBroadcast(state);
+            mHandler.sendMessage(mHandler.obtainMessage(EVENT_NOTIFY_STATE_CHANGE, state));
         }
     }
 
@@ -249,6 +250,9 @@ public class Terminal {
                             Log.e(mTag, mName + " reach maximum retry count");
                         }
                     }
+                    break;
+                case EVENT_NOTIFY_STATE_CHANGE:
+                    sendStateChangedBroadcast((boolean) message.obj);
                     break;
                 default:
                     break;
