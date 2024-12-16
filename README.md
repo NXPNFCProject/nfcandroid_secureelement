@@ -6,6 +6,21 @@
 | :-------------: |:-------------:| 
 | nfcandroid_secureelement    |  git clone https://github.com/NXPNFCProject/nfcandroid_secureelement.git |
 
+
+#### Supported Version on "br_android_ncihalx_comm_16" branch
+| Android Version        | NXP Release          | NXP Tag  |
+| :-------------: |:---------------------:| :-----:|
+
+
+
+
+
+
+
+
+
+
+
 #### Supported Version on "br_android_ncihalx_comm_15" branch
 | Android Version        | NXP Release          | NXP Tag  |
 | :-------------: |:---------------------:| :-----:|
