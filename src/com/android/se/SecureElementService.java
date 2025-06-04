@@ -308,13 +308,8 @@ public final class SecureElementService extends Service {
     }
 
     private byte[] getUUIDFromCallingUid(int uid) {
-        byte[] uuid = HalRefDoParser.getInstance().findUUID(Binder.getCallingUid());
-
-        if (uuid != null) {
-            return uuid;
-        }
-
-        return null;
+        byte[] uuid = HalRefDoParser.getInstance().findUUID(uid);
+        return uuid;
     }
 
     final class SecureElementSession extends ISecureElementSession.Stub {
