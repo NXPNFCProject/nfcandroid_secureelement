@@ -222,6 +222,7 @@ public class Terminal {
                     mAccessControlEnforcer.reset();
                 }
             }
+            mGetHalRetryCount = 0;
             mHandler.sendMessageDelayed(mHandler.obtainMessage(EVENT_GET_HAL, 0),
                     GET_SERVICE_DELAY_MILLIS);
         }
