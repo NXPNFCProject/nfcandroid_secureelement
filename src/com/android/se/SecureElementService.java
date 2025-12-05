@@ -352,7 +352,7 @@ public final class SecureElementService extends Service {
 
         void removeChannel(Channel channel) {
             synchronized (mLock) {
-                if (mChannels != null) {
+                if (mChannels != null && mChannels.contains(channel)) {
                     mChannels.remove(channel);
                 }
             }
@@ -363,7 +363,11 @@ public final class SecureElementService extends Service {
             synchronized (mLock) {
                 while (mChannels.size() > 0) {
                     try {
-                        mChannels.get(0).close();
+                        Channel channel = mChannels.get(0);
+                        channel.close();
+                        if (channel.isClosed() && mChannels.contains(channel)) {
+                            mChannels.remove(channel);
+                        }
                     } catch (Exception ignore) {
                         Log.e(mTag, "SecureElementSession Channel - close Exception "
                                 + ignore.getMessage());
