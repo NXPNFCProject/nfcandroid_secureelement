@@ -370,7 +370,7 @@ public class AccessControlEnforcer {
         PackageInfo foundPkgInfo;
         try {
             foundPkgInfo = mPackageManager.getPackageInfo(packageName,
-                    PackageManager.GET_SIGNATURES);
+                    PackageManager.GET_SIGNING_CERTIFICATES);
         } catch (NameNotFoundException ne) {
             throw new AccessControlException("Package does not exist");
         }
@@ -383,7 +383,14 @@ public class AccessControlEnforcer {
             throw new AccessControlException("Hash can not be computed");
         }
         List<byte[]> appCertHashes = new ArrayList<byte[]>();
-        for (Signature signature : foundPkgInfo.signatures) {
+        Signature[] signatures = foundPkgInfo.signingInfo.hasMultipleSigners()
+                ? foundPkgInfo.signingInfo.getApkContentsSigners()
+                : foundPkgInfo.signingInfo.getSigningCertificateHistory();
+        if (signatures == null) {
+            return appCertHashes;
+        }
+        for (int i = 0; i < signatures.length; i++) {
+            Signature signature = signatures[i];
             appCertHashes.add(md.digest(signature.toByteArray()));
             appCertHashes.add(md256.digest(signature.toByteArray()));
         }
