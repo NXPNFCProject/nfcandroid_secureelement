@@ -610,6 +610,13 @@ public class Terminal {
                 throw new IOException("OpenBasicChannel() failed");
             } else if (status[0] == SecureElementStatus.NO_SUCH_ELEMENT_ERROR) {
                 throw new NoSuchElementException("OpenBasicChannel() failed");
+            } else if (status[0] == SecureElementStatus.FAILED) {
+                Log.e(mTag, "OpenBasicChannel() failed with status FAILED");
+                throw new IOException("OpenBasicChannel() failed with status FAILED");
+            } else if (status[0] != SecureElementStatus.SUCCESS) {
+                Log.e(mTag, "OpenBasicChannel() failed with unknown status: " + status[0]);
+                throw new IOException("OpenBasicChannel() failed with unknown status: "
+                        + status[0]);
             }
 
             byte[] selectResponse = responseList.get(0);
@@ -708,16 +715,23 @@ public class Terminal {
                 }
             }
 
-            if (status[0] == SecureElementStatus.CHANNEL_NOT_AVAILABLE) {
+            if (status[0] == SecureElementStatus.FAILED) {
+                Log.e(mTag, "OpenLogicalChannel() failed with status FAILED");
+                throw new IOException("OpenLogicalChannel() failed with status FAILED");
+            } else if (status[0] == SecureElementStatus.CHANNEL_NOT_AVAILABLE) {
                 return null;
             } else if (status[0] == SecureElementStatus.UNSUPPORTED_OPERATION) {
                 throw new UnsupportedOperationException("OpenLogicalChannel() failed");
             } else if (status[0] == SecureElementStatus.IOERROR) {
-                throw new IOException("OpenLogicalChannel() failed");
+                throw new IOException("OpenLogicalChannel() failed due to IOERROR");
             } else if (status[0] == SecureElementStatus.NO_SUCH_ELEMENT_ERROR) {
                 throw new NoSuchElementException("OpenLogicalChannel() failed");
             }
-            if (responseArray[0].channelNumber <= 0 || status[0] != SecureElementStatus.SUCCESS) {
+
+            if (responseArray[0] == null || responseArray[0].channelNumber <= 0
+                    || status[0] != SecureElementStatus.SUCCESS) {
+                Log.e(mTag, "OpenLogicalChannel() failed or channelNumber <= 0, status: "
+                        + status[0]);
                 return null;
             }
             int channelNumber = responseArray[0].channelNumber;
