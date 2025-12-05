@@ -901,12 +901,12 @@ public class Terminal {
      */
     public boolean reset() {
         synchronized (mLock) {
-            if (mSEHal12 == null && mAidlHal == null) {
-                return false;
-            }
             mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.SECURE_ELEMENT_PRIVILEGED_OPERATION,
                 "Need SECURE_ELEMENT_PRIVILEGED_OPERATION permission");
+            if (mSEHal12 == null && mAidlHal == null) {
+                return false;
+            }
 
             try {
                 if (mAidlHal != null) {
