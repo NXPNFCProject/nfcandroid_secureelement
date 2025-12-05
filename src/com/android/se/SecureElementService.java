@@ -44,6 +44,7 @@ import android.se.omapi.SEService;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.internal.util.DumpUtils;
 import com.android.se.Terminal.SecureElementReader;
 import com.android.se.internal.ByteArrayConverter;
 import com.android.se.security.HalRefDoParser;
@@ -148,6 +149,7 @@ public final class SecureElementService extends Service {
 
         @Override
         protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+            if (!DumpUtils.checkDumpPermission(SecureElementService.this, mTag, writer)) return;
             for (Terminal terminal : mTerminals.values()) {
                 terminal.dump(writer);
             }
