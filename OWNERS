@@ -1,4 +1,4 @@
-# Default code reviewers picked from top 3 or more developers.
-# Please update this list if you find better candidates.
-jackcwyu@google.com
+# Bug component: 456592
 georgekgchang@google.com
+jackcwyu@google.com
+rpius@google.com
