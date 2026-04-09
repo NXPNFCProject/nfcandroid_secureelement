@@ -9,6 +9,7 @@
          android:label="SecureElementApplication"
          android:persistent="true"
          android:directBootAware="true"
+         android:defaultToDeviceProtectedStorage="true"
          android:memtagMode="async">
         <service android:name=".SecureElementService"
              android:visibleToInstantApps="true"
